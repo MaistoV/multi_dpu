@@ -4,6 +4,9 @@
 # Output data
 data/*
 
+# Plots
+*.png
+
 # Prerequisites
 *.d
 

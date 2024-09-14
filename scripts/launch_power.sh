@@ -34,12 +34,12 @@ WORKLOAD_list=(
 # Sub-script fixed parameters
 export NUM_THREADS=1
 export RUN_SOFTMAX=0
-export DATASET="cifar100" # this will work also with cifar10
+export DATASET="cifar100" # this will work also with cifar100
 
 # Sub-script tunable parameters
 export MAX_IMAGES=500
-export POWERAPP_US=12000 # 12 ms (TIME_BIN_US)
-USECONDS=12000000.0 # 12 seconds (floating point)
+export POWERAPP_US=20000 # ms
+USECONDS=${POWERAPP_US}000.0 # seconds (floating point)
 export NUM_SAPLES=$(bc -l <<< $USECONDS/$POWERAPP_US)
 
 # Datasets
@@ -54,10 +54,11 @@ export IMAGE_PATH=$DATASET_DIR/$DATASET/test_set/img/
 # For ARCHs
 for arch in ${ARCH_list[*]}; do
     # Program FPGA
-    echo source scripts/fpga_setup.sh $arch
+    source scripts/fpga_setup.sh $arch
 
     # For workloads
     for wl in ${WORKLOAD_list[*]}; do
+        echo "[LAUNCH] Running ARCH=$arch WORKLOAD=$wl for ${POWERAPP_US}us"
         # Measure model/idle
         source scripts/measure_power.sh $arch $wl
     done

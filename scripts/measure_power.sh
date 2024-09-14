@@ -15,30 +15,38 @@
 #   MAX_IMAGES
 #   NUM_THREADS
 
-# Parse args
+##############
+# Parse args #
+##############
 ARCH=$1
 WORKLOAD=$2
 
-# Environment
-POWERAPP=xilinx-zcu102-power/powerapp/powerapp.elf
-APP=xilinx-zcu102-power/app/app_O0
+###############
+# Environment #
+###############
+# Local script
+POWERAPP=./powerapp
+APP=./app_O0
 XMODELS_DIR=xmodels
 XMODEL=${XMODELS_DIR}/arch${ARCH}_${WORKLOAD}.xmodel
-ls $XMODEL
-return
-# for app_O0
+
+# Environment for app_O0
 export XMODEL_BASENAME=$(basename $XMODEL .xmodel)
+
+#################
+# Start measure #
+#################
 
 # Launch power measurement in background in continuous mode
 OUT_DIR=data/$DATASET
 mkdir -p $OUT_DIR
-OUT_FILE=$OUT_DIR/ARCH${ARCH}_${WORKLOAD}.csv
-echo $POWERAPP               \
+OUT_FILE=$OUT_DIR/arch${ARCH}_${WORKLOAD}.csv
+$POWERAPP               \
         -n $NUM_SAPLES  \
         -t $POWERAPP_US \
         -p 1            \
         -o $OUT_FILE    \
-        # &
+        &
 # Save PID for later
 POWERAPP_PID=$!
 
@@ -50,7 +58,6 @@ if [ "$WORKLOAD" == "idle" ]; then
     echo "Measuring IDLE"
 else
     # Launch
-    echo \
     ./app_O0 $XMODEL        \
         $IMAGE_PATH         \
         $LABELS             \
