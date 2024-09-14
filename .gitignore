@@ -1,3 +1,9 @@
+# Compiled models
+*.xmodel
+
+# Output data
+data/*
+
 # Prerequisites
 *.d
 

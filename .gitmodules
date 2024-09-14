@@ -1,0 +1,3 @@
+[submodule "xilinx-zcu102-power"]
+	path = xilinx-zcu102-power
+	url = git@github.com:MaistoV/xilinx-zcu102-power.git
