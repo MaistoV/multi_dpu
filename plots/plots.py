@@ -41,42 +41,62 @@ os.makedirs(out_dir, exist_ok=True)
 ###################
 # Local variables #
 ###################
-color_array = ["r", "g", "b", "orange"]
-marker_array = ["X", "d", "*", "s"]
+color_array = ["grey", "r", "g", "b", "orange"]
+marker_array = ["X", "d", "P", "s", "v"]
+LINE_WIDTH=2
 
 ##############
 # Power data #
 ##############
-wildcard_path = data_dir + "/*/ARCH*.csv"
-print("Reading from", wildcard_path)
-net_paths = glob.glob(wildcard_path)
-assert(len(net_paths) != 0)
-net_paths.sort()
-# net_paths = net_paths[1:] + net_paths[: 1]
-# print("net_paths: ", net_paths)
 
+ARCH_list = [
+		512,
+		1024,
+		2304,
+		4096,
+	]
+ARCH_strings = [
+		"512",
+		"1024",
+		"2304",
+		"4096",
+	]
+model_path_names = [
+	"idle",
+	"mobilenet",
+	"vgg16",
+	"DenseNet-201",
+	"ResNet50",
+]
+model_names = [
+	"Idle",
+	"MobileNet",
+	"VGG-16",
+	"DenseNet-201",
+	"ResNet-50",
+]
+
+power_models = [
+				[0. for _ in range(len(model_names))]
+			 		for _ in range(len(ARCH_list))
+			]
+power_paths = [
+				["" for _ in range(len(model_names))]
+			 		for _ in range(len(ARCH_list))
+			]
 # Get model names and arch values
-net_names = ["" for net in range(len(net_paths))]
-model_names = ["" for net in range(len(net_paths))]
-arch_values = ["" for net in range(len(net_paths))]
-for net in range(0,len(net_paths)):
-	# basename
-	net_names[net] = os.path.splitext(os.path.basename(net_paths[net]))[0]
-	arch_values[net] = re.sub("_.+", "", net_names[net])[4:]
-	model_names[net] = re.sub(".+_", "", net_names[net])
-	# Patch model names, to avoid re-running experiments
-	model_names[net] = re.sub("mobilenet", "MobileNet", model_names[net])
-	model_names[net] = re.sub("ResNet50", "ResNet-50", model_names[net])
-	model_names[net] = re.sub("vgg16", "VGG-16", model_names[net])
-	model_names[net] = re.sub("idle", "Idle", model_names[net])
-# print("net_names ", net_names)
-# print("model_names ", model_names)
-# print("arch_values ", arch_values)
+for arch in range(0,len(ARCH_list)):
+	for model in range(0,len(model_names)):
+		# Compose path, e.g. ARCH512_CIFAR10_mobilenet.csv
+		wildcard_path = data_dir + "*/ARCH" + str(ARCH_list[arch]) + "*" + model_path_names[model] + ".csv"
+		# print("Reading from", wildcard_path[arch][model])
+		power_paths[arch][model] = glob.glob(wildcard_path)
+		print(arch, model, power_paths[arch][model])
+		assert(len(power_paths[arch][model]) == 1)
 
-# Read data
-power_nets = list(range(len(net_paths)))
-for net in range(0,len(net_paths)):
-	power_nets[net] = pandas.read_csv(net_paths[net], sep=";", index_col=0 )
+		# Read data
+		power_models[arch][model] = pandas.read_csv(power_paths[arch][model][0], sep=";", index_col=0)
+# print(power_models)
 
 ###################
 # Correction data #
@@ -90,85 +110,93 @@ calibration_mean = 35 # from TSUSC
 print("Calibration mean:", calibration_mean, " mW")
 
 # Adjust measures for powerapp
-for net in range(0,len(net_paths)):
-	if model_names[net] != "Idle":
-		power_nets[net]["Total mW"] -= calibration_mean
-		power_nets[net]["PS mW"]	-= calibration_mean
+for arch in range(0,len(ARCH_list)):
+	for model in range(0,len(model_names)):
+		if model_names[model] != "Idle":
+			power_models[arch][model]["Total mW"] -= calibration_mean
+			power_models[arch][model]["PS mW"]    -= calibration_mean
 
 ###################
 # Timestamps data #
 ###################
 
-time_nets = [0. for _ in range(len(net_paths))]
-for net in range(0,len(net_paths)):
-	# print(net_paths[net] + ".time")
-	if model_names[net] != "Idle":
-		time_nets[net] = pandas.read_csv(net_paths[net] + ".time", sep=";" )
-	else:
-		# Idle workloads do not have a .time file
-		time_nets[net] = 0
+time_models = [
+				[0. for _ in range(len(model_names))]
+			 		for _ in range(len(ARCH_list))
+			]
+for arch in range(0,len(ARCH_list)):
+	for model in range(0,len(model_names)):
+		if model_names[model] != "Idle":
+			time_models[arch][model] = pandas.read_csv(power_paths[arch][model][0] + ".time", sep=";" )
+
+		else:
+			# Idle workloads do not have a .time file, create one with the full run extent
+			df_dict = {
+				"Start(sec)": [power_models[arch][model]["Timestamp"].iloc[0]],
+				"End(sec)": [power_models[arch][model]["Timestamp"].iloc[-1]]
+				}
+			time_models[arch][model] = pandas.DataFrame(df_dict)
+			# print(time_models[arch][model])
 
 #######################
 # Offset to zero time #
 #######################
 
 # Realign timestamps to zero
-for net in range(0,len(net_paths)):
-	offset = power_nets[net]["Timestamp"].loc[0]
-	power_nets[net]["Timestamp"] -= offset
-	time_nets [net]				 -= offset
+for arch in range(0,len(ARCH_list)):
+	for model in range(0,len(model_names)):
+		offset = power_models[arch][model]["Timestamp"].loc[0]
+		power_models[arch][model]["Timestamp"] -= offset
+		time_models [arch][model]			   -= offset
 
 ############################
 # Compute and save runtime #
 ############################
 
 # Filename
-filename = out_dir + "/runtimes.csv"
+filename = out_dir + "runtimes.csv"
 print("Writing to", filename)
 # Open file
 file1 = open(filename, "w")
 # Header
-file1.write("ARCH;Network;Runtime (s)\n")
+file1.write("ARCH;Model;Runtime (s)\n")
 
+runtime_model = [
+				[0. for _ in range(len(model_names))]
+			 		for _ in range(len(ARCH_list))
+			]
 # Compute and write to file
-runtime_net = [0. for net in range(len(net_paths))]
-for net in range(0,len(net_paths)):
-	if model_names[net] != "Idle":
-		runtime_net[net] = time_nets[net]["End(sec)"].to_numpy() - time_nets[net]["Start(sec)"].to_numpy()
-		file1.write(arch_values[net] + ";" + model_names[net] + ";" + str(runtime_net[net][0]) + "\n")
+for arch in range(0,len(ARCH_list)):
+	for model in range(0,len(model_names)):
+		if model_names[model] != "Idle":
+			runtime_model[arch][model] = \
+				time_models[arch][model]["End(sec)"].to_numpy() \
+					- time_models[arch][model]["Start(sec)"].to_numpy()
+			file1.write(str(ARCH_list[arch]) + ";" + model_names[model] + ";" + str(runtime_model[arch][model][0]) + "\n")
 
 # Close file
 file1.close()
 
 # Read back as dataframe
-runtime_net_df = pandas.read_csv(filename, sep=";", )
+runtime_model_df = pandas.read_csv(filename, sep=";")
 
-#################
-# Runtimes plot #
-#################
-plt.figure()
-ARCH_list = [
-		512,
-		1024,
-		2304,
-		4096,
-	]
-model_names_uniq = list(set(model_names))
-arch_values_uniq = list(set(arch_values))
-i = 0
-for model in model_names_uniq:
-	if model != "Idle":
-		df = runtime_net_df.loc[runtime_net_df["Network"] == model]
-		df.sort_values(by="ARCH", inplace=True)
+# #################
+# # Runtimes plot #
+# #################
+plt.figure("Runtime", figsize=[15,10])
+for model in range(0,len(model_names)):
+	if model_names[model] != "Idle":
+		df = runtime_model_df.loc[runtime_model_df["Model"] == model_names[model]]
+		# df.sort_values(by="ARCH", inplace=True)
 		plt.semilogy(
 				ARCH_list,
 				df["Runtime (s)"],
 				"-",
-				color=color_array[i],
-				marker=marker_array[i],
-				label=model
+				linewidth=LINE_WIDTH,
+				color=color_array[model],
+				marker=marker_array[model],
+				label=model_names[model]
 			)
-		i += 1
 # Decorate
 plt.xticks(ARCH_list)
 plt.xlabel("ARCH")
@@ -176,7 +204,7 @@ plt.ylabel("Runtime (s)")
 plt.grid(which="both")
 plt.legend()
 
-figname = figures_dir + "/runtimes.png"
+figname = figures_dir + "runtimes.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
 
@@ -184,233 +212,168 @@ print(figname)
 # Power plot #
 ##############
 
-# TODO: Reshape 1D array of dataframes to 2D (ARCH, model)
-
 plt.figure("Power", figsize=[15,10])
 i = 0
-for model in model_names_uniq:
-	# # Plot all
-	# for column in power_nets[net]:
-	# 	plt.plot( power_nets[net][column], label=column	)
+num_rows = len(ARCH_list)
+num_cols = len(model_names)
+fig, ax = plt.subplots(
+		num_rows, num_cols,
+		sharey=True, sharex=True,
+		dpi=400
+	)
+FONT_SIZE=6
+for arch in range(0,len(ARCH_list)):
+	for model in range(0,len(model_names)):
+		# plt.subplot(num_rows, num_cols, arch*len(model_names) + model+1)#, sharex=ax, sharey=ax)
+		# Plot just PL and PS
+		ax[arch][model].plot(power_models[arch][model]["Timestamp"], power_models[arch][model]["PS mW"	], label="PS", linewidth=0.2	)
+		ax[arch][model].plot(power_models[arch][model]["Timestamp"], power_models[arch][model]["PL mW"	], label="PL", linewidth=0.2	)
+		ax[arch][model].set_yscale("log")
 
-	# Plot just PL and PS
-	plt.plot(power_nets[model]["Timestamp"], power_nets[model]["PS mW"	], label="PS"	)
-	plt.plot(power_nets[model]["Timestamp"], power_nets[model]["PL mW"	], label="PL"	)
-	# plt.plot(power_nets[net]["Timestamp"], power_nets[net]["MGT mW"	], label="MGT"	)
-	# plt.plot(power_nets[net]["Timestamp"], power_nets[net]["Total mW"	], label="Total"	)
+		# Plot timeframe boundary
+		if model_names[model] != "Idle":
+			ax[arch][model].axvline(x=time_models[arch][model]["Start(sec)"].to_numpy(), linestyle="--", linewidth=0.5, label="Timeframe")
+			ax[arch][model].axvline(x=time_models[arch][model]["End(sec)"  ].to_numpy(), linestyle="--", linewidth=0.5)
 
-	# Plot timeframe boundary
-	plt.axvline(x=time_nets[model]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
-	plt.axvline(x=time_nets[model]["End(sec)"  ].to_numpy(), linestyle="--")
+		# Decorate
+		ax[arch][model].tick_params(axis="both", which="both", labelsize=FONT_SIZE)        # Font size for tick labels
+		ax[arch][model].grid(True, which='both', axis='y')
 
-	# Decorate
-	plt.legend()
-	plt.title(net_names[net])
-	plt.xlabel("Seconds")
-	plt.ylabel("mW")
+		if (model == 0) and ( arch == 0):
+			ax[arch][model].legend(fontsize=FONT_SIZE)
 
-figname = figures_dir + "/power.png"
+		if arch == 0:
+			ax[arch][model].set_title(model_names[model], fontsize=FONT_SIZE)
+
+		if model == 0:
+			ax[arch][model].set_ylabel("ARCH" + str(ARCH_list[arch]), fontsize=FONT_SIZE) # Power (mW)
+
+		if (arch == (num_rows-1)):
+			ax[arch][model].set_xlabel("Seconds", fontsize=FONT_SIZE)
+
+figname = figures_dir + "power.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
+
+########################
+# Compute power/energy #
+########################
+# Compute integral in the target time frame
+TIME_BIN_s = 0.024 # 24000 us
+total_power_ps = [[0. for _ in range(len(model_names))] for _ in range(len(ARCH_list)) ]
+total_power_pl = [[0. for _ in range(len(model_names))] for _ in range(len(ARCH_list)) ]
+avg_power_ps   = [[0. for _ in range(len(model_names))] for _ in range(len(ARCH_list)) ]
+avg_power_pl   = [[0. for _ in range(len(model_names))] for _ in range(len(ARCH_list)) ]
+pl_energy_mJ   = [[0. for _ in range(len(model_names))] for _ in range(len(ARCH_list)) ]
+ps_energy_mJ   = [[0. for _ in range(len(model_names))] for _ in range(len(ARCH_list)) ]
+# Compute integral and average in the target time frame
+TIME_BIN_s = 0.024 # 24000 us
+# Loop over models
+for arch in range(0,len(ARCH_list)):
+	for model in range(0,len(model_names)):
+		# Reset counter
+		counter = 0
+		# Loop over samples
+		for sample in range(0,len(power_models[arch][model])):
+			# If this sample is in the timeframe
+			if (
+				power_models[arch][model]["Timestamp"][sample] > time_models[arch][model]["Start(sec)"].to_numpy()
+				and power_models[arch][model]["Timestamp"][sample] < time_models[arch][model]["End(sec)"].to_numpy()
+				):
+				# Accumulate power
+				total_power_ps[arch][model] += power_models[arch][model]["PL mW"][sample]
+				total_power_pl[arch][model] += power_models[arch][model]["PS mW"][sample]
+				# Count up
+				counter += 1
+		# Compute average
+		avg_power_ps[arch][model] = total_power_ps[arch][model] / counter
+		avg_power_pl[arch][model] = total_power_pl[arch][model] / counter
+		# Compute energy
+		ps_energy_mJ[arch][model] = total_power_ps[arch][model] * TIME_BIN_s
+		pl_energy_mJ[arch][model] = total_power_pl[arch][model] * TIME_BIN_s
+
+#####################
+# Plot averge power #
+#####################
+
+plt.figure("Average power", figsize=[15,10])
+# ax = plt.subplot(1,1,1)
+# ax.set_yscale('log')
+
+patterns = [ "/" , "-" , "x", ".", "O" ]
+for arch in range(0,len(ARCH_list)):
+	# Reset bottom position
+	bottom=0
+	# print("ARCH", ARCH_list[arch])
+	for model in range(0,len(model_names)):
+		tot_avg_power = avg_power_ps[arch][model] + avg_power_pl[arch][model]
+		# print(tot_avg_power)
+		plt.bar(
+				(arch +1) * 10,
+				tot_avg_power,
+				width=5,
+				hatch=patterns[model],
+				color=color_array[model],
+				linewidth=LINE_WIDTH,
+				bottom=bottom,
+			)
+		bottom += tot_avg_power
+# Decorate
+plt.xticks([10,20,30,40], labels=ARCH_strings)
+plt.xlabel("ARCH")
+plt.ylabel("Power (mW)")
+plt.grid(axis="y")
+plt.legend(model_names)
+
+figname = figures_dir + "avg_power.png"
+plt.savefig(figname, dpi=400, bbox_inches="tight")
+print(figname)
+
+# # Dataframe per franca
+# header = ["modelwork", "Energy (mJ)"]
+# df_list = [["" for _ in header] for _ in range(len(power_models))]
+# for i in range(0,len(model_names)):
+# 	df_list[i][0] = base_models + "-" + str(num_layers[i] )
+# 	df_list[i][1] = str(ps_energy_mJ[i] + pl_energy_mJ[i])
+
+# df = pandas.DataFrame(df_list, index=None, columns=header)
+# filename = out_dir + dataset + "_" + base_models_lower + "_energy.csv"
+# print("Writing to", filename)
+# df.to_csv(filename, index=False)
 
 ###############
 # Energy plot #
 ###############
-
-# Compute integral in the target time frame
-TIME_BIN_s = 0.024 # 24000 us
-# plt.figure("Energy from power", figsize=[15,10])
-pl_energy_mJ = [0. for net in range(len(power_nets))]
-ps_energy_mJ = [0. for net in range(len(power_nets))]
-# Loop over nets
-for net in range(0,len(power_nets)):
-	# Loop over samples
-	for sample in range(0,len(power_nets[net])):
-		# If this sample is in the timeframe
-		if (
-			power_nets[net]["Timestamp"][sample] > time_nets[net]["Start(sec)"].to_numpy()
-			and power_nets[net]["Timestamp"][sample] < time_nets[net]["End(sec)"].to_numpy()
-			):
-			# Accumulate power
-			pl_energy_mJ[net] += power_nets[net]["PL mW"][sample]
-			ps_energy_mJ[net] += power_nets[net]["PS mW"][sample]
-	# Multiply with time bin (constant across samples)
-	pl_energy_mJ[net] *= TIME_BIN_s
-	ps_energy_mJ[net] *= TIME_BIN_s
-
-# Dataframe per franca
-header = ["Network", "Energy (mJ)"]
-df_list = [["" for _ in header] for _ in range(len(power_nets))]
-for i in range(0,len(net_names)):
-	df_list[i][0] = base_nets + "-" + str(num_layers[i] )
-	df_list[i][1] = str(ps_energy_mJ[i] + pl_energy_mJ[i])
-
-df = pandas.DataFrame(df_list, index=None, columns=header)
-filename = out_dir + dataset + "_" + base_nets_lower + "_energy.csv"
-print("Writing to", filename)
-df.to_csv(filename, index=False)
-
-# # NUM_FRAMES=1000
-# # J / frame
-# # print("J/frame(32x32)", (pl_energy_mJ[-1] + ps_energy_mJ[-1]) / 1000 / NUM_FRAMES)
-
-# print(num_layers)
-plt.plot(num_layers, pl_energy_mJ, label="PL", marker="o" )
-plt.plot(num_layers, ps_energy_mJ, label="PS", marker="o" )
-plt.plot(num_layers[-1], pl_energy_mJ[-1], marker="*", markersize=15, color="r", label="Teacher")
-plt.plot(num_layers[-1], ps_energy_mJ[-1], marker="*", markersize=15, color="r" )
-plt.xticks(ticks=num_layers)
-plt.legend(fontsize=15)
-plt.xlabel("Number of layers")
-plt.ylabel("mJ")
-plt.savefig(figures_dir + dataset + "_" + base_nets + "_Energy from power.png", bbox_inches="tight")
-
-# plt.figure("Relative energy efficiency", figsize=[15,10])
-# tot_energy_mJ = [0. for net in range(len(power_nets))]
-# relative_energy = [0. for net in range(len(power_nets))]
-# for net in reversed(range(0,len(tot_energy_mJ))):
-# 	tot_energy_mJ[net] = pl_energy_mJ[net] + pl_energy_mJ[net]
-# 	relative_energy[net] = tot_energy_mJ[net] / tot_energy_mJ[-1]
-# plt.plot(num_layers, relative_energy, marker="o" )
-# plt.xlabel("Number of layers")
-# plt.ylabel("%")
-# plt.yticks(np.arange(0,1.1,0.1), labels=np.arange(0,110,10))
-# plt.title("Student / Teacher energy gain")
-# plt.savefig(figures_dir + dataset + "_" + base_nets + "_Relative energy.png", bbox_inches="tight")
-
-#####################
-# Raw measures data #
-#####################
-TIME_BIN_s = 0.02 # 20000 us
-
-power_rails = [
-		# # Cortex-As (PS)
-		"VCCPSINTFP",	# Dominant
-		# "VCCPSINTLP",
-		# "VCCPSAUX",
-		# "VCCPSPLL",
-		"VCCPSDDR",		# Dominant
-		# "VCCOPS",		# Don't use
-		# "VCCOPS3",	# Don't use
-		# "VCCPSDDRPLL",
-		# # FPGA (PL)
-		"VCCINT",		# Dominant
-		# "VCCBRAM",
-		# "VCCAUX",
-		# "VCC1V2",
-		# "VCC3V3",
-		# # # MGT
-		# "MGTRAVCC",
-		# "MGTRAVTT",
-		# "MGTAVCC",
-		# "MGTAVTT",
-		# "VCC3V3",
-		]
-
-power_rails_names = [ "PS", "DDR", "PL"]
-
-#####################
-# Raw measures plot #
-#####################
-plt.figure("Power from raw data", figsize=[15,10])
-RANGE = np.arange(0, len(raw_nets_currents[0]["Timestamp"])*TIME_BIN_s, TIME_BIN_s)
-ax = plt.subplot(2,2,1) # Assuming 8
-# Skip teacher
-for net in range(0,4):
-	ax = plt.subplot(2, 2, net+1, sharey=ax) # Assuming 8
-
-	# loop over power rails
-	cnt = 0
-	for pr in power_rails:
-		power_mW = (raw_nets_currents[net][pr + " mA"] * raw_nets_voltages[net][pr + " mV"]) / 1000.
-		plt.plot(raw_nets_currents[net]["Timestamp"], power_mW, label=power_rails_names[cnt])
-		cnt += 1
-
-	# Plot timeframe boundary
-	plt.axvline(x=time_nets[net]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
-	plt.axvline(x=time_nets[net]["End(sec)"  ].to_numpy(), linestyle="--")
-
-	# Decorate
-	if ( net == 1 ):
-		plt.legend(fontsize=15)
-	plt.title(net_names[net])
-	plt.xlabel("Time")
-	# plt.xticks(ticks=raw_nets_currents[net]["Timestamp"], labels=RANGE)
-	plt.xticks([])
-	plt.ylabel("Power(mW)")
-
-figname = figures_dir + dataset + "_" + base_nets + "_raw.png"
-print(figname)
-plt.savefig(figname, bbox_inches="tight")
-
-##########################
-# Print a single measure #
-##########################
-plt.figure("Single", figsize=[15,10])
-
-# loop over power rails
-cnt = 0
-for pr in power_rails:
-	# Plot the teacher
-	power_mW = (raw_nets_currents[-1][pr + " mA"] * raw_nets_voltages[-1][pr + " mV"]) / 1000.
-	plt.plot(raw_nets_currents[-1]["Timestamp"], power_mW, label=power_rails_names[cnt])
-	cnt += 1
-
-# Plot timeframe boundary
-plt.axvline(x=time_nets[-1]["Start(sec)"].to_numpy(), linestyle="--", label="Timeframe")
-plt.axvline(x=time_nets[-1]["End(sec)"  ].to_numpy(), linestyle="--")
-
+plt.figure("Energy", figsize=[15,10])
+for model in range(0,len(model_names)):
+	tot_energy = [0. for _ in range(len(ARCH_list))]
+	for arch in range(0,len(ARCH_list)):
+		tot_energy[arch] = ps_energy_mJ[arch][model] + pl_energy_mJ[arch][model]
+	plt.plot(
+			ARCH_list,
+			tot_energy,
+			"-",
+			color=color_array[model],
+			marker=marker_array[model],
+			linewidth=LINE_WIDTH,
+		)
 # Decorate
-plt.legend(fontsize=15)
-plt.xlabel("Time")
-# plt.xticks(ticks=raw_nets_currents[net]["Timestamp"], labels=RANGE)
-plt.xticks([])
-plt.ylabel("Power(mW)")
+plt.xticks(ARCH_list)
+plt.xlabel("ARCH")
+plt.ylabel("Energy (mJ)")
+plt.grid(which="both")
+plt.legend(model_names, loc='upper left')
 
-figname = figures_dir + "power_rails.png"
+figname = figures_dir + "energy.png"
+plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
-plt.savefig(figname, bbox_inches="tight")
 
-# Compute integral in the target time frame
-# plt.figure("Energy from raw", figsize=[15,10])
-# energy_mJ = [[0. for _ in range(len(power_rails))] for _ in range(len(power_nets))]
-# # Loop over nets
-# for net in range(0,len(net_names_raw)):
-# 	# Loop over samples
-# 	for sample in range(0,len(raw_nets_currents[net])):
-# 		# If this sample is within the timeframe
-# 		if (
-# 			raw_nets_currents[net]["Timestamp"][sample] > time_nets[net]["Start(sec)"].to_numpy()
-# 			and raw_nets_currents[net]["Timestamp"][sample] < time_nets[net]["End(sec)"].to_numpy()
-# 			):
-# 			# Accumulate power
-# 			for pr in range(0, len(power_rails)):
-# 				power_mW = (raw_nets_currents[net][power_rails[pr] + " mA"][sample] * raw_nets_voltages[net][power_rails[pr] + " mV"][sample]) / 1000.
-# 				energy_mJ[net][pr] += power_mW * TIME_BIN_s
-# 	# # Multiply with time bin (constant across samples)
-# 	# energy_mJ[net] *= TIME_BIN_s
+exit()
 
-# # ax=plt.subplot(2,4,1)
-# WIDTH=0.2
-# colors=["orange","green","blue"]
-# for net in range(0,len(net_names_raw)):
-# 	for pr in range(0, len(power_rails)):
-# 		# ax=plt.subplot(2,4,net+1, sharey=ax)
-# 		plt.bar(net-WIDTH+(pr*WIDTH), # Assuming 3 prs
-# 			energy_mJ[net][pr],
-# 			width=WIDTH,
-# 			color=colors[pr]
-# 			)
-# for col in range(0,len(colors)):
-# 	plt.bar(0,0,color=colors[col], label=power_rails[col])
-
-# plt.legend(fontsize=15)
-# plt.xlabel("Number of layers")
-# plt.xticks( ticks=range(0, len(net_names_raw)),
-# 			labels=num_layers
-# 			)
-
-# plt.ylabel("mJ")
-# plt.savefig(figures_dir + dataset + "_" + base_nets + "_Energy from raw.png", bbox_inches="tight")
-
-# # plt.show()
+#####################
+# Energy efficiency #
+#####################
+# TODO
+# NUM_FRAMES=500
+# J / frame
+# print("J/frame(32x32)", (pl_energy_mJ[-1] + ps_energy_mJ[-1]) / 1000 / NUM_FRAMES)
