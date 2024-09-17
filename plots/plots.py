@@ -10,7 +10,6 @@
 
 import os
 import numpy as np
-import re
 import matplotlib.pyplot as plt
 import glob
 import pandas
@@ -41,14 +40,6 @@ os.makedirs(out_dir, exist_ok=True)
 ###################
 # Local variables #
 ###################
-color_array = ["grey", "r", "g", "b", "orange"]
-marker_array = ["X", "d", "P", "s", "v"]
-LINE_WIDTH=2
-
-##############
-# Power data #
-##############
-
 ARCH_list = [
 		512,
 		1024,
@@ -76,6 +67,61 @@ model_names = [
 	"ResNet-50",
 ]
 
+# Formatting
+color_array = ["grey", "r", "g", "b", "orange"]
+marker_array = ["X", "d", "P", "s", "v"]
+LINE_WIDTH=5
+MARKER_SIZE=15
+FONT_SIZE=20
+# Set font size
+plt.rcParams.update({'font.size': FONT_SIZE})
+
+####################
+# xmodel footprint #
+####################
+# Compose path, e.g. ARCH512_CIFAR10_mobilenet.csv
+wildcard_path = data_dir + "/xmodel_footprint.csv"
+print("Reading from", wildcard_path)
+path = glob.glob(wildcard_path)
+assert(len(path) == 1)
+
+# Read data
+xmodel_footprint = pandas.read_csv(path[0], sep=";" )
+
+# Plot
+plt.figure("xmodel footprint", figsize=[15,10])
+for model in range(0,len(model_names)):
+	if model_names[model] != "Idle":
+		# Select model
+		df = xmodel_footprint.loc[xmodel_footprint["Model"] == model_names[model]]
+		# Remove offset
+		df["Size(B)"] /= df["Size(B)"].max()
+		plt.plot(
+				ARCH_list,
+				df["Size(B)"],
+				"-",
+				linewidth=LINE_WIDTH,
+				markersize=MARKER_SIZE,
+				color=color_array[model],
+				marker=marker_array[model],
+				label=model_names[model],
+				# base=2
+				)
+# Decorate
+plt.xticks(ARCH_list)
+plt.xlabel("ARCH")
+plt.ylabel("Footprint reduction")
+plt.grid(which="both")
+plt.legend()
+
+figname = figures_dir + "/xmodels.png"
+plt.savefig(figname, dpi=400, bbox_inches="tight")
+print(figname)
+
+##############
+# Power data #
+##############
+
 power_models = [
 				[0. for _ in range(len(model_names))]
 			 		for _ in range(len(ARCH_list))
@@ -88,8 +134,8 @@ power_paths = [
 for arch in range(0,len(ARCH_list)):
 	for model in range(0,len(model_names)):
 		# Compose path, e.g. ARCH512_CIFAR10_mobilenet.csv
-		wildcard_path = data_dir + "*/ARCH" + str(ARCH_list[arch]) + "*" + model_path_names[model] + ".csv"
-		# print("Reading from", wildcard_path[arch][model])
+		wildcard_path = data_dir + "/*/arch" + str(ARCH_list[arch]) + "*" + model_path_names[model] + ".csv"
+		print("Reading from", wildcard_path)
 		power_paths[arch][model] = glob.glob(wildcard_path)
 		print(arch, model, power_paths[arch][model])
 		assert(len(power_paths[arch][model]) == 1)
@@ -154,7 +200,7 @@ for arch in range(0,len(ARCH_list)):
 ############################
 
 # Filename
-filename = out_dir + "runtimes.csv"
+filename = out_dir + "/runtimes.csv"
 print("Writing to", filename)
 # Open file
 file1 = open(filename, "w")
@@ -180,9 +226,9 @@ file1.close()
 # Read back as dataframe
 runtime_model_df = pandas.read_csv(filename, sep=";")
 
-# #################
-# # Runtimes plot #
-# #################
+#################
+# Runtimes plot #
+#################
 plt.figure("Runtime", figsize=[15,10])
 for model in range(0,len(model_names)):
 	if model_names[model] != "Idle":
@@ -193,6 +239,7 @@ for model in range(0,len(model_names)):
 				df["Runtime (s)"],
 				"-",
 				linewidth=LINE_WIDTH,
+				markersize=MARKER_SIZE,
 				color=color_array[model],
 				marker=marker_array[model],
 				label=model_names[model]
@@ -204,7 +251,7 @@ plt.ylabel("Runtime (s)")
 plt.grid(which="both")
 plt.legend()
 
-figname = figures_dir + "runtimes.png"
+figname = figures_dir + "/runtimes.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
 
@@ -221,7 +268,7 @@ fig, ax = plt.subplots(
 		sharey=True, sharex=True,
 		dpi=400
 	)
-FONT_SIZE=6
+AX_FONT_SIZE=6
 for arch in range(0,len(ARCH_list)):
 	for model in range(0,len(model_names)):
 		# plt.subplot(num_rows, num_cols, arch*len(model_names) + model+1)#, sharex=ax, sharey=ax)
@@ -236,22 +283,22 @@ for arch in range(0,len(ARCH_list)):
 			ax[arch][model].axvline(x=time_models[arch][model]["End(sec)"  ].to_numpy(), linestyle="--", linewidth=0.5)
 
 		# Decorate
-		ax[arch][model].tick_params(axis="both", which="both", labelsize=FONT_SIZE)        # Font size for tick labels
+		ax[arch][model].tick_params(axis="both", which="both", labelsize=AX_FONT_SIZE)        # Font size for tick labels
 		ax[arch][model].grid(True, which='both', axis='y')
 
 		if (model == 0) and ( arch == 0):
-			ax[arch][model].legend(fontsize=FONT_SIZE)
+			ax[arch][model].legend(fontsize=AX_FONT_SIZE)
 
 		if arch == 0:
-			ax[arch][model].set_title(model_names[model], fontsize=FONT_SIZE)
+			ax[arch][model].set_title(model_names[model], fontsize=AX_FONT_SIZE)
 
 		if model == 0:
-			ax[arch][model].set_ylabel("ARCH" + str(ARCH_list[arch]), fontsize=FONT_SIZE) # Power (mW)
+			ax[arch][model].set_ylabel("ARCH" + str(ARCH_list[arch]), fontsize=AX_FONT_SIZE) # Power (mW)
 
 		if (arch == (num_rows-1)):
-			ax[arch][model].set_xlabel("Seconds", fontsize=FONT_SIZE)
+			ax[arch][model].set_xlabel("Seconds", fontsize=AX_FONT_SIZE)
 
-figname = figures_dir + "power.png"
+figname = figures_dir + "/power.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
 
@@ -288,18 +335,20 @@ for arch in range(0,len(ARCH_list)):
 		# Compute average
 		avg_power_ps[arch][model] = total_power_ps[arch][model] / counter
 		avg_power_pl[arch][model] = total_power_pl[arch][model] / counter
-		# Compute energy
-		ps_energy_mJ[arch][model] = total_power_ps[arch][model] * TIME_BIN_s
-		pl_energy_mJ[arch][model] = total_power_pl[arch][model] * TIME_BIN_s
+		# Compute energy (from raw data)
+		# ps_energy_mJ[arch][model] = total_power_ps[arch][model] * TIME_BIN_s
+		# pl_energy_mJ[arch][model] = total_power_pl[arch][model] * TIME_BIN_s
+		# Compute energy (heuristically, under near-constant-power hyp.)
+		runtime_s = runtime_model[arch][model]
+		ps_energy_mJ[arch][model] = avg_power_ps[arch][model] * runtime_s
+		pl_energy_mJ[arch][model] = avg_power_ps[arch][model] * runtime_s
 
 #####################
 # Plot averge power #
 #####################
 
 plt.figure("Average power", figsize=[15,10])
-# ax = plt.subplot(1,1,1)
-# ax.set_yscale('log')
-
+# ax = plt.subplot(1,1,1); ax.set_yscale('log')
 patterns = [ "/" , "-" , "x", ".", "O" ]
 for arch in range(0,len(ARCH_list)):
 	# Reset bottom position
@@ -314,7 +363,6 @@ for arch in range(0,len(ARCH_list)):
 				width=5,
 				hatch=patterns[model],
 				color=color_array[model],
-				linewidth=LINE_WIDTH,
 				bottom=bottom,
 			)
 		bottom += tot_avg_power
@@ -322,10 +370,10 @@ for arch in range(0,len(ARCH_list)):
 plt.xticks([10,20,30,40], labels=ARCH_strings)
 plt.xlabel("ARCH")
 plt.ylabel("Power (mW)")
-plt.grid(axis="y")
+plt.grid(axis="y", which="both")
 plt.legend(model_names)
 
-figname = figures_dir + "avg_power.png"
+figname = figures_dir + "/avg_power.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
 
@@ -346,25 +394,27 @@ print(figname)
 ###############
 plt.figure("Energy", figsize=[15,10])
 for model in range(0,len(model_names)):
-	tot_energy = [0. for _ in range(len(ARCH_list))]
-	for arch in range(0,len(ARCH_list)):
-		tot_energy[arch] = ps_energy_mJ[arch][model] + pl_energy_mJ[arch][model]
-	plt.plot(
-			ARCH_list,
-			tot_energy,
-			"-",
-			color=color_array[model],
-			marker=marker_array[model],
-			linewidth=LINE_WIDTH,
-		)
-# Decorate
+	if ( model_names[model] != "Idle" ):
+		tot_energy = [0. for _ in range(len(ARCH_list))]
+		for arch in range(0,len(ARCH_list)):
+			tot_energy[arch] = ps_energy_mJ[arch][model] + pl_energy_mJ[arch][model]
+		plt.semilogy(
+				ARCH_list,
+				tot_energy,
+				"-",
+				color=color_array[model],
+				marker=marker_array[model],
+				linewidth=LINE_WIDTH,
+				markersize=MARKER_SIZE,
+			)
+	# Decorate
 plt.xticks(ARCH_list)
 plt.xlabel("ARCH")
 plt.ylabel("Energy (mJ)")
 plt.grid(which="both")
-plt.legend(model_names, loc='upper left')
+plt.legend(model_names[1:])#, loc='upper left')
 
-figname = figures_dir + "energy.png"
+figname = figures_dir + "/energy.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
 
