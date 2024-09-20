@@ -38,9 +38,9 @@ export DATASET="cifar100" # this will work also with cifar100
 
 # Sub-script tunable parameters
 export MAX_IMAGES=500
-export POWERAPP_US=20000 # ms
-USECONDS=${POWERAPP_US}000.0 # seconds (floating point)
-export NUM_SAPLES=$(bc -l <<< $USECONDS/$POWERAPP_US)
+export POWERAPP_MS=24000 # ms
+USECONDS=${POWERAPP_MS}000.0 # seconds (floating point)
+export NUM_SAPLES=$(bc -l <<< $USECONDS/$POWERAPP_MS)
 
 # Datasets
 DATASET_DIR=/home/root/datasets
@@ -53,13 +53,16 @@ export IMAGE_PATH=$DATASET_DIR/$DATASET/test_set/img/
 
 # For ARCHs
 for arch in ${ARCH_list[*]}; do
-    # Program FPGA
-    source scripts/fpga_setup.sh $arch
-
     # For workloads
     for wl in ${WORKLOAD_list[*]}; do
-        echo "[LAUNCH] Running ARCH=$arch WORKLOAD=$wl for ${POWERAPP_US}us"
+        # Program FPGA (reset platform)
+        source scripts/fpga_setup.sh $arch
+
+        echo "[LAUNCH] Running ARCH=$arch WORKLOAD=$wl for ${POWERAPP_MS}ms"
         # Measure model/idle
         source scripts/measure_power.sh $arch $wl
+
+        # Sleep between runs
+        sleep 2
     done
 done

@@ -76,6 +76,10 @@ plots:
 #########
 # Clean #
 #########
+clean_data:
+	rm -rf ${DATA_DIR}
+	${MAKE} ssh SSH_CMD="rm -rf ${BOARD_DATA_DIR}"
+	${MAKE} setup
 clean:
 	${MAKE} -C ${POWER_DIR} clean
 
