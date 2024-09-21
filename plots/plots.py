@@ -75,7 +75,7 @@ plt.xlabel("ARCH")
 plt.ylabel("Footprint reduction")
 plt.grid(which="both")
 plt.legend()
-
+# Save figure
 figname = figures_dir + "/xmodels.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
@@ -212,7 +212,7 @@ plt.xlabel("ARCH")
 plt.ylabel("Runtime (s)")
 plt.grid(which="both")
 plt.legend()
-
+# Save figure
 figname = figures_dir + "/runtimes.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
@@ -259,7 +259,7 @@ for arch in range(0,len(common.ARCH_list)):
 
 		if (arch == (num_rows-1)):
 			ax[arch][model].set_xlabel("Seconds", fontsize=AX_FONT_SIZE)
-
+# Save figure
 figname = figures_dir + "/power.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
@@ -309,7 +309,8 @@ for arch in range(0,len(common.ARCH_list)):
 # Plot averge power #
 #####################
 
-plt.figure("Average power", figsize=[15,10])
+# Plot bars
+plt.figure("Average power bars", figsize=[15,10])
 # ax = plt.subplot(1,1,1); ax.set_yscale('log')
 patterns = [ "/" , "-" , "x", ".", "O" ]
 for arch in range(0,len(common.ARCH_list)):
@@ -334,8 +335,34 @@ plt.xlabel("ARCH")
 plt.ylabel("Power (mW)")
 plt.grid(axis="y", which="both")
 plt.legend(common.model_names)
-
+# Save figure
 figname = figures_dir + "/avg_power.png"
+plt.savefig(figname, dpi=400, bbox_inches="tight")
+print(figname)
+
+# Plot lines
+plt.figure("Average power lines", figsize=[15,10])
+for model in range(0,len(common.model_names)):
+	tot_avg_power = [0. for _ in range(len(common.ARCH_list))]
+	for arch in range(0,len(common.ARCH_list)):
+		tot_avg_power[arch] = avg_power_ps[arch][model] + avg_power_pl[arch][model]
+	plt.semilogy(
+		common.ARCH_list,
+		tot_avg_power,
+		linewidth=common.LINE_WIDTH,
+		markersize=common.MARKER_SIZE,
+		color=common.color_array[model],
+		marker=common.marker_array[model],
+		label=common.model_names[model]
+	)
+# Decorate
+plt.xticks(common.ARCH_list)
+plt.xlabel("ARCH")
+plt.ylabel("Power (mW)")
+plt.grid(which="both")
+plt.legend(common.model_names)
+# Save figure
+figname = figures_dir + "/avg_power_lines.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
 
@@ -375,13 +402,13 @@ for model in range(0,len(common.model_names)):
 				linewidth=common.LINE_WIDTH,
 				markersize=common.MARKER_SIZE,
 			)
-	# Decorate
+# Decorate
 plt.xticks(common.ARCH_list)
 plt.xlabel("ARCH")
 plt.ylabel("Energy (mJ)")
 plt.grid(which="both")
 plt.legend(common.model_names[1:])#, loc='upper left')
-
+# Save figure
 figname = figures_dir + "/energy.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
