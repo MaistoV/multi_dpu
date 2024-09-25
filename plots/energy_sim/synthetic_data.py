@@ -12,6 +12,8 @@ import pandas
 import plot_common as common
 import energy_sim
 
+plt.rcParams.update({'font.size': common.FONT_SIZE + 2})
+
 figures_dir = "plots/output_plots/"
 plt.figure() # workaround a silly snap bug for vscode
 
@@ -71,7 +73,7 @@ workload_dict = [
 workload_df = pandas.DataFrame(workload_dict)
 # print(workload_df)
 
-# plt.figure("Workloads", figsize=[15,10])
+# plt.figure("Workloads", figsize=[20,15])
 # num_rows = 2
 # num_cols = 2
 # ax = plt.subplot(num_rows,num_cols,1)
@@ -122,6 +124,8 @@ for config_index in range(0,NUM_DPU_CONFIGS):
         num_threads = 12
 
         # Call to simulation
+        plot_figures=False
+        # plot_figures=True
         T_tot   [workload_index][config_index], \
         E_tot   [workload_index][config_index], \
         E_idle  [workload_index][config_index] = \
@@ -131,7 +135,7 @@ for config_index in range(0,NUM_DPU_CONFIGS):
                         num_threads,
                         runtime_df,
                         avg_power_df,
-                        plot_figures=True,
+                        plot_figures=plot_figures,
                         figures_dir=figures_dir,
                     )
         # energy_waste =  E_idle_tot / (E_tot + E_idle_tot)
@@ -143,12 +147,12 @@ print("E_tot:", E_tot)
 print("E_idle:", E_idle)
 
 # Plot runtime
-multiDPU_config_names = ["" for _ in range(len(multiDPU_configs.configs_df_dict))]
+multiDPU_config_tick_names = ["" for _ in range(len(multiDPU_configs.configs_df_dict))]
 for config_index in range(0,len(multiDPU_configs.configs_df_dict)):
-    multiDPU_config_names[config_index] = \
-        multiDPU_configs.configs_df_dict[config_index]["Name"]
+    multiDPU_config_tick_names[config_index] = \
+        multiDPU_configs.configs_df_dict[config_index]["TickName"]
 
-plt.figure("Multi-DPU Runtime", figsize=[15,10])
+plt.figure("Multi-DPU Runtime", figsize=[20,15])
 num_rows = 2
 if (len(workload_df) == 1):
     num_rows = 1
@@ -166,25 +170,26 @@ for workload_index in range(0, len(workload_df)):
     )
     # Decorate
     if ((workload_index % num_cols) == 0):
-        plt.ylabel("Energy (mJ)")
-    else:
-        plt.yticks([])
+        plt.ylabel("Runtime (s)")
+    # else:
+    #     plt.yticks([])
     if (workload_index >= num_cols):
-        plt.xlabel("Multi-DPU hardware configurations")
+        plt.xlabel("Hardware configurations")
     plt.xticks(
             range(0,NUM_DPU_CONFIGS),
-            labels=multiDPU_config_names
+            labels=multiDPU_config_tick_names,
+            rotation=0
         )
+    plt.grid(axis="y")
     if workload_index == 0:
         plt.legend()
-    plt.grid()
 # Save figure
 figname = figures_dir + "/multidpu_runtimes.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")
 print(figname)
 
 # Plot energy
-plt.figure("Multi-DPU Energy", figsize=[15,10])
+plt.figure("Multi-DPU Energy", figsize=[20,15])
 num_rows = 2
 if (len(workload_df) == 1):
     num_rows = 1
@@ -211,16 +216,19 @@ for workload_index in range(0, len(workload_df)):
     # Decorate
     if ((workload_index % num_cols) == 0):
         plt.ylabel("Energy (mJ)")
-    else:
-        plt.yticks([])
+        plt.yticks()
+    # else:
+    #     plt.yticks([])
     if (workload_index >= num_cols):
-        plt.xlabel("Multi-DPU hardware configurations")
+        plt.xlabel("Hardware configurations")
     plt.xticks(
             range(0,NUM_DPU_CONFIGS),
-            labels=multiDPU_config_names
+            labels=multiDPU_config_tick_names,
+            rotation=0
         )
-    plt.legend()
-    plt.grid()
+    plt.grid(axis="y")
+    if workload_index == 0:
+        plt.legend()
 # Save figure
 figname = figures_dir + "/multidpu_energy.png"
 plt.savefig(figname, dpi=400, bbox_inches="tight")

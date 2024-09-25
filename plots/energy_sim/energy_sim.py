@@ -5,6 +5,7 @@ import math
 import matplotlib.pyplot as plt
 import pandas
 import multiDPU_configs
+import hardcoded_allocations
 
 ######################
 # Energy consumption #
@@ -75,14 +76,27 @@ def compute_energy(
     ########################
     # Unroll config dataframe
     D = list(range(0, config_df["Num"].sum()))
+    # print("D:", D)
     A = [0 for _ in range(config_df["Num"].sum())]
     offset = 0
     for index,row in config_df.iterrows():
         for i in range(0,row["Num"]):
-            A[i+offset] = row["ARCH"]
-        offset += 1
-    # TODO: update per-DPU-core multi-threading correction factor (from TECS)
-    k = [1,1,1,1,1,1,1,1,1] # TBD: from TECS
+            A[offset] = row["ARCH"]
+            offset += 1
+    print("A:", A)
+    # Based on linear regression model from TECS
+    b0 = 0.231800862 # Intercept
+    b1 = 0.717562696 # Num threads
+    MAX_THREADS = 12
+    k = [0. for _ in range(MAX_THREADS)]
+    for i in range(0,MAX_THREADS):
+        # Compute model (i+1 is the number of threads)
+        linreg_runtime = b0 + (b1 * (i+1))
+        # Compute reduction w.r.t. number of threads
+        k[i] = linreg_runtime / (i+1)
+    k[0] = 1. # Adjust to exactly 1 for one thread
+    # print("k:", k)
+
     # Load dataframes
     t = runtime_df
     p = avg_power_df
@@ -94,73 +108,73 @@ def compute_energy(
     ################
     # Generate thread array based on workload characterization
     # TODO: for now, this is done manually. In the future, it should be auto-generated
-    thread_array = ["" for _ in range(num_threads)]
-    thread_array_uniform = [
-                            "MobileNet",
-                            "MobileNet",
-                            "MobileNet",
-                            "MobileNet",
-                            "VGG-16",
-                            "VGG-16",
-                            "VGG-16",
-                            "VGG-16",
-                            "ResNet-50",
-                            "DenseNet-201",
-                            "ResNet-50",
-                            "DenseNet-201",
-                        ]
-    thread_array_low = [
-                            "MobileNet",
-                            "MobileNet",
-                            "MobileNet",
-                            "MobileNet",
-                            "MobileNet",
-                            "MobileNet",
-                            "VGG-16",
-                            "VGG-16",
-                            "MobileNet",
-                            "MobileNet",
-                            "ResNet-50",
-                            "DenseNet-201",
-                        ]
-    thread_array_mid = [
-                            "MobileNet",
-                            "MobileNet",
-                            "VGG-16",
-                            "VGG-16",
-                            "VGG-16",
-                            "VGG-16",
-                            "VGG-16",
-                            "VGG-16",
-                            "VGG-16",
-                            "VGG-16",
-                            "ResNet-50",
-                            "DenseNet-201",
-                        ]
-    thread_array_high = [
-                            "MobileNet",
-                            "MobileNet",
-                            "ResNet-50",
-                            "DenseNet-201",
-                            "VGG-16",
-                            "VGG-16",
-                            "ResNet-50",
-                            "DenseNet-201",
-                            "ResNet-50",
-                            "DenseNet-201",
-                            "ResNet-50",
-                            "DenseNet-201",
-                        ]
+    # thread_array = ["" for _ in range(num_threads)]
+    # thread_array_uniform = [
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "ResNet-50",
+    #                         "DenseNet-201",
+    #                         "ResNet-50",
+    #                         "DenseNet-201",
+    #                     ]
+    # thread_array_low = [
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "ResNet-50",
+    #                         "DenseNet-201",
+    #                     ]
+    # thread_array_mid = [
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "ResNet-50",
+    #                         "DenseNet-201",
+    #                     ]
+    # thread_array_high = [
+    #                         "MobileNet",
+    #                         "MobileNet",
+    #                         "ResNet-50",
+    #                         "DenseNet-201",
+    #                         "VGG-16",
+    #                         "VGG-16",
+    #                         "ResNet-50",
+    #                         "DenseNet-201",
+    #                         "ResNet-50",
+    #                         "DenseNet-201",
+    #                         "ResNet-50",
+    #                         "DenseNet-201",
+    #                     ]
 
-    # NOTE: match is not yet supported for this python version
-    if workload["Name"] == "Uniform":
-        thread_array = thread_array_uniform
-    if workload["Name"] == "Low-energy skew":
-        thread_array = thread_array_low
-    if workload["Name"] == "Mid-energy skew":
-        thread_array = thread_array_mid
-    if workload["Name"] == "High-energy skew":
-        thread_array = thread_array_high
+    # # NOTE: match is not yet supported for this python version
+    # if workload["Name"] == "Uniform":
+    #     thread_array = thread_array_uniform
+    # if workload["Name"] == "Low-energy skew":
+    #     thread_array = thread_array_low
+    # if workload["Name"] == "Mid-energy skew":
+    #     thread_array = thread_array_mid
+    # if workload["Name"] == "High-energy skew":
+        # thread_array = thread_array_high
 
     ##############################
     # Populate allocation matrix #
@@ -172,7 +186,7 @@ def compute_energy(
             num_DPUs=len(D)
         )
     # Debug
-    print("[INFO] S:")
+    print("[DEBUG] S:")
     for i in range(0,len(S)):
         print("\t", i, ": ", end="")
         for j in range(0,len(S[0])):
@@ -186,7 +200,7 @@ def compute_energy(
         for i in range(0,len(S[0])):
             if S[d][i] != "":
                 N[d] += 1
-    # print("N:", N)
+    print("[DEBUG] N:", N)
 
     ###########
     # Runtime #
@@ -202,25 +216,27 @@ def compute_energy(
     # Compute DPU runtimes
     T = [0. for _ in range(len(D))]
     for d in D:
+        print("[DEBUG] A[d]", A[d])
         M = S[d]
-        # print("M:", M)
+        print("[DEBUG] M:", M)
         # Compute: T[d] = sum[M[d]](t[A[d],:]) * k[N[d]]
         for model in M:
             # Compute: sum[M[d]](t[A[d],:])
             # If allocated
             if model != "":
+                # print("[DEBUG] model", model)
                 T[d] += t.loc[
                         (t["ARCH"] == A[d])
                         &
                         (t["Model"] == model)
                     ]["Runtime (s)"].values[0]
-            # Adjust for multi-threading (k[N[d]])
-            T[d] *= k[N[d]]
-    # print("T:", T)
+        # Adjust for multi-threading (k[N[d]])
+        T[d] *= k[N[d]]
+    # print("[DEBUG] T:", T)
 
     # Compute total T_tot = max[d](T[d])
     T_tot = max(T)
-    # print("T_tot:", T_tot)
+    # print("[DEBUG] T_tot:", T_tot)
 
     # Compute idle times
     T_idle = [0. for _ in range(len(D))]
@@ -228,11 +244,12 @@ def compute_energy(
         T_idle[d] = T_tot - T[d]
         # TBD
         # assert(math.isclose(sum(t[A[d]]) + T_idle[0], T))
-    # print("T_idle:", T_idle)
+    # print("[DEBUG] T_idle:", T_idle)
 
     # Figure
     if plot_figures:
-        plt.figure("DPUs Runtime", figsize=[15,10])
+        plt.figure("DPUs Runtime" + config_name + "_" + workload["Name"],
+                    figsize=[15,10])
         plt.title(config_name)
         # Plot compute time
         plt.bar(
@@ -258,7 +275,7 @@ def compute_energy(
         plt.grid(axis="y", which="both")
         plt.legend()
         # Save figure
-        figname = figures_dir + "arch_runtimes.png"
+        figname = figures_dir + "arch_runtimes_" + config_name + "_" + workload["Name"] + ".png"
         plt.savefig(figname, dpi=400, bbox_inches="tight")
         print(figname)
 
@@ -300,9 +317,8 @@ def compute_energy(
                     ]["Power PL (mW)"].values[0]
                 # Calculate compute energy
                 E[d] = (power_pl + power_ps) * runtime
-
-            # Adjust for multi-threading (k[N[d]])
-            E[d] *= k[N[d]]
+        # Adjust for multi-threading (k[N[d]])
+        E[d] *= k[N[d]]
 
     # Calculate idle energy
     for d in D:
@@ -320,16 +336,17 @@ def compute_energy(
         # Calculate
         E_idle[d] = (power_idle_ps + power_idle_pl) * T_idle[d]
 
-    # print("E:", E)
-    # print("E_idle:", E_idle)
+    # print("[DEBUG] E:", E)
+    # print("[DEBUG] E_idle:", E_idle)
 
     # Compute total E_tot = sum[D[:]](E[:])
     E_tot = sum(E)
-    # print("E_tot:", E_tot)
+    # print("[DEBUG] E_tot:", E_tot)
 
     # Figure
     if plot_figures:
-        plt.figure("DPU Energy", figsize=[15,10])
+        plt.figure("DPUs Energy" + config_name + "_" + workload["Name"],
+                    figsize=[15,10])
         plt.title(config_name)
         # Plot compute time
         plt.bar(
@@ -355,15 +372,15 @@ def compute_energy(
         plt.grid(axis="y", which="both")
         plt.legend()
         # Save figure
-        figname = figures_dir + "/arch_energy.png"
+        figname = figures_dir + "/arch_energy_" + config_name + "_" + workload["Name"] + ".png"
         plt.savefig(figname, dpi=400, bbox_inches="tight")
         print(figname)
 
     # Wasted energy
     E_idle_tot = sum(E_idle)
-    # print("E_idle_tot:", E_idle_tot)
+    # print("[DEBUG] E_idle_tot:", E_idle_tot)
     # energy_waste =  E_idle_tot / (E_tot + E_tot)
-    # print("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
+    # print("[DEBUG] Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
 
     # Return values
     return T_tot, E_tot, E_idle_tot
@@ -371,7 +388,6 @@ def compute_energy(
 #####################
 # Thread allocation #
 #####################
-import hardcoded_allocations
 
 def thread_allocation (
             multiDPU_config_name,
@@ -392,32 +408,37 @@ def thread_allocation (
     ##########################
     # Select pre-coded allocation, based on hardware config
     # TODO: for now, this is done manually. In the future, a solver should take care of this.
-    if multiDPU_config_name == "Multi-DPU 1":
-        S_uniform   = hardcoded_allocations.multiDPU1_uniform
-        S_low       = hardcoded_allocations.multiDPU1_low
-        S_mid       = hardcoded_allocations.multiDPU1_mid
-        S_high      = hardcoded_allocations.multiDPU1_high
-    if multiDPU_config_name == "Multi-DPU 2":
-        S_uniform   = hardcoded_allocations.multiDPU2_uniform
-        S_low       = hardcoded_allocations.multiDPU2_low
-        S_mid       = hardcoded_allocations.multiDPU2_mid
-        S_high      = hardcoded_allocations.multiDPU2_high
+    if multiDPU_config_name == "2x4096-2x2304":
+        S_uniform   = hardcoded_allocations.multiDPU_2x4096_2x2304_uniform
+        S_low       = hardcoded_allocations.multiDPU_2x4096_2x2304_low
+        S_mid       = hardcoded_allocations.multiDPU_2x4096_2x2304_mid
+        S_high      = hardcoded_allocations.multiDPU_2x4096_2x2304_high
+    if multiDPU_config_name == "1x2304_4x1024":
+        S_uniform   = hardcoded_allocations.multiDPU_1x2304_4x1024_uniform
+        S_low       = hardcoded_allocations.multiDPU_1x2304_4x1024_low
+        S_mid       = hardcoded_allocations.multiDPU_1x2304_4x1024_mid
+        S_high      = hardcoded_allocations.multiDPU_1x2304_4x1024_high
     if multiDPU_config_name == "Multi-DPU 3":
         S_uniform   = hardcoded_allocations.multiDPU3_uniform
         S_low       = hardcoded_allocations.multiDPU3_low
         S_mid       = hardcoded_allocations.multiDPU3_mid
         S_high      = hardcoded_allocations.multiDPU3_high
-    if multiDPU_config_name == "Vitis-AI 3x4096":
+    if multiDPU_config_name == "3x4096":
         S_uniform   = hardcoded_allocations.vitis_ai_3x4096_uniform
         S_low       = hardcoded_allocations.vitis_ai_3x4096_low
         S_mid       = hardcoded_allocations.vitis_ai_3x4096_mid
         S_high      = hardcoded_allocations.vitis_ai_3x4096_high
-    if multiDPU_config_name == "Vitis-AI 4x1024":
+    if multiDPU_config_name == "4x2304":
+        S_uniform   = hardcoded_allocations.vitis_ai_4x2304_uniform
+        S_low       = hardcoded_allocations.vitis_ai_4x2304_low
+        S_mid       = hardcoded_allocations.vitis_ai_4x2304_mid
+        S_high      = hardcoded_allocations.vitis_ai_4x2304_high
+    if multiDPU_config_name == "4x1024":
         S_uniform   = hardcoded_allocations.vitis_ai_4x1024_uniform
         S_low       = hardcoded_allocations.vitis_ai_4x1024_low
         S_mid       = hardcoded_allocations.vitis_ai_4x1024_mid
         S_high      = hardcoded_allocations.vitis_ai_4x1024_high
-    if multiDPU_config_name == "Vitis-AI 4x512":
+    if multiDPU_config_name == "4x512":
         S_uniform   = hardcoded_allocations.vitis_ai_4x512_uniform
         S_low       = hardcoded_allocations.vitis_ai_4x512_low
         S_mid       = hardcoded_allocations.vitis_ai_4x512_mid
@@ -674,7 +695,7 @@ def is_multidpu_placeable(multiDPU_config_df):
                         "/" + str(zcu102_resources_df[res].values[0]) +
                         " ({:2.3f}".format(percentage) + "%)"
                         )
-                print("Exceeding available " + res + " resources")
+                print("[ERROR] Exceeding available " + res + " resources")
                 # Non-placeable
                 return False
     # Placeable

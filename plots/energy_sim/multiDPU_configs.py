@@ -11,19 +11,19 @@ import pandas
 multiDPU_config1_dict = [
             {
                 "ARCH"   : 4096,
-                "Num"    : 1
+                "Num"    : 2
             },
             {
                 "ARCH"   : 2304,
-                "Num"    : 1
+                "Num"    : 2
             },
             {
                 "ARCH"   : 1024,
-                "Num"    : 1
+                "Num"    : 0
             },
             {
                 "ARCH"   : 512,
-                "Num"    : 2
+                "Num"    : 0
             },
         ]
 multiDPU_config1_df = pandas.DataFrame(multiDPU_config1_dict)
@@ -31,10 +31,10 @@ multiDPU_config1_df = pandas.DataFrame(multiDPU_config1_dict)
 
 # Configuration 2
 # Header: ARCH, Num
-multiDPU_config2_dict = [
+multiDPU_1x2304_4x1024_dict = [
             {
                 "ARCH"   : 4096,
-                "Num"    : 1
+                "Num"    : 0
             },
             {
                 "ARCH"   : 2304,
@@ -42,36 +42,14 @@ multiDPU_config2_dict = [
             },
             {
                 "ARCH"   : 1024,
-                "Num"    : 1
+                "Num"    : 4
             },
             {
                 "ARCH"   : 512,
-                "Num"    : 2
+                "Num"    : 0
             },
         ]
-multiDPU_config2_df = pandas.DataFrame(multiDPU_config2_dict)
-
-# Configuration 3
-# Header: ARCH, Num
-multiDPU_config3_dict = [
-            {
-                "ARCH"   : 4096,
-                "Num"    : 1
-            },
-            {
-                "ARCH"   : 2304,
-                "Num"    : 1
-            },
-            {
-                "ARCH"   : 1024,
-                "Num"    : 1
-            },
-            {
-                "ARCH"   : 512,
-                "Num"    : 2
-            },
-        ]
-multiDPU_config3_df = pandas.DataFrame(multiDPU_config3_dict)
+multiDPU_1x2304_4x1024_df = pandas.DataFrame(multiDPU_1x2304_4x1024_dict)
 
 ############
 # Vitis-AI #
@@ -95,6 +73,15 @@ vitis_ai_4x1024_dict = [
         ]
 vitis_ai_4x1024_df = pandas.DataFrame(vitis_ai_4x1024_dict)
 
+# Configuration Vitis-AI 4x2304
+vitis_ai_4x2304_dict = [
+            {
+                "ARCH"   : 2304,
+                "Num"    : 4
+            },
+        ]
+vitis_ai_4x2304_df = pandas.DataFrame(vitis_ai_4x2304_dict)
+
 # Configuration Vitis-AI 4x1024
 vitis_ai_4x512_dict = [
             {
@@ -108,27 +95,33 @@ vitis_ai_4x512_df = pandas.DataFrame(vitis_ai_4x512_dict)
 # List of hardware configurations
 configs_df_dict = [
                     {
-                        "Name"  : "Multi-DPU 1",
-                        "Config": multiDPU_config1_df,
+                        "Name"      : "2x4096-2x2304",
+                        "TickName"  : "2x4096\n2x2304",
+                        "Config"    : multiDPU_config1_df,
+                    },
+                    {
+                        "Name"      : "1x2304_4x1024",
+                        "TickName"  : "1x2304\n4x1024",
+                        "Config"    : multiDPU_1x2304_4x1024_df,
+                    },
+                    {
+                        "Name"      : "3x4096",
+                        "TickName"  : "3x4096",
+                        "Config"    : vitis_ai_3x4096_df,
+                    },
+                    {
+                        "Name"      : "4x2304",
+                        "TickName"  : "4x2304",
+                        "Config"    : vitis_ai_4x2304_df,
                     },
                     # {
-                    #     "Name"  : "Multi-DPU 2",
-                    #     "Config": multiDPU_config2_df,
-                    # },
-                    # {
-                    #     "Name"  : "Multi-DPU 3",
-                    #     "Config": multiDPU_config2_df,
+                    #     "Name"      : "4x1024",
+                    #     "TickName"  : "4x1024",
+                    #     "Config"    : vitis_ai_4x1024_df,
                     # },
                     {
-                        "Name"  : "Vitis-AI 3x4096",
-                        "Config": vitis_ai_3x4096_df,
-                    },
-                    {
-                        "Name"  : "Vitis-AI 4x1024",
-                        "Config": vitis_ai_4x1024_df,
-                    },
-                    {
-                        "Name"  : "Vitis-AI 4x512",
-                        "Config": vitis_ai_4x512_df,
+                        "Name"      : "4x512",
+                        "TickName"  : "4x512",
+                        "Config"    : vitis_ai_4x512_df,
                     },
                 ]
