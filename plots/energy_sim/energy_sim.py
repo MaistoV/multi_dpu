@@ -13,17 +13,17 @@ import hardcoded_allocations
 # Description: map workload on multi-DPU config -> min(runtime and energy) -> Pareto frontier?
 # NOTE: this model/heuristic works under some simplifying assumptions:
 #       1. Homogeneous interference between threads: thread runtime is adjusted by
-#       2. Operational safety: the config/config++ runtime never fails, which could instead happen
-#           under high loads. This assumption should hold under non-extream loads (7+ threads).
+#       2. Operational safety: the C/C++ runtime never fails, which could instead happen
+#           under high loads. This assumption should hold under non-extreme loads (7+ threads).
 #       3. Conservativity: All adjustments and observations are based on the baseline
 #          Vitis-AI runtime, which features a single device file for all threads.
 #          This might be over-conservative for a deployed multi-DPU system.
-#       4. Only batch workloads: the whole modeling is based on an unordered batch of threads.
+#       4. Only batch workloads: the whole modelling is based on an unordered batch of threads.
 #          No inter-thread dependencies, no arrival times (all zeros)
 
 # Inputs:
 #   config      : multi-DPU configuration
-#   workload    : workload charachterization
+#   workload    : workload characterization
 #   num_threads : total number of threads in workload
 # Internal data structures:
 #   threads  : array of threads (i.e. models) in workload
