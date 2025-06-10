@@ -1,0 +1,5 @@
+Name,Symbol
+Exhaustive-search,\Sigma_{E}
+Batched Exhaustive-search,\Sigma_{BE}
+Round Robin,\Sigma_{RR}
+Greedy,\Sigma_{G}

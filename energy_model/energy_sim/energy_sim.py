@@ -30,6 +30,7 @@ import utils
 #   D[d]     : array of DPUs
 #   A[d]     : array of arch values
 #   k[n]     : multi-threading runtime adjustment factor
+#   M[t]     : DNN model of thread t
 #   t[a,m]   : single-thread runtime of model (m) on arch (a) (measured)
 #   p[a,m]   : single-thread power draw of model (m) on arch (a) (measured)
 # Allocation:
@@ -72,29 +73,16 @@ def compute_energy(
     # Init data-structures #
     ########################
     # Unroll hw_config dataframe
-    D = list(range(0, hw_config_df["Num"].sum()))
-    # print("D:", D)
-    A = [0 for _ in range(hw_config_df["Num"].sum())]
-    offset = 0
-    for index,row in hw_config_df.iterrows():
-        for i in range(0,row["Num"]):
-            A[offset] = row["ARCH"]
-            offset += 1
+    D = list(range(len(hw_config_df)))
+    print("D:", D)
+    A = hw_config_df["ARCH"].values
     print("A:", A)
-    k = [0. for _ in range(utils.MAX_THREADS)]
-    for i in range(0,utils.MAX_THREADS):
-        # Compute model (i+1 is the number of threads)
-        linreg_runtime = utils.b0 + (utils.b1 * (i+1))
-        # Compute reduction w.r.t. number of threads
-        k[i] = linreg_runtime / (i+1)
-    k[0] = 1. # Adjust to exactly 1. for one thread
-    # print("k:", k)
+    M = workload_df["Model"].values
+    print("M:", M)
 
     # Load dataframes
     t = runtime_df
     p = avg_power_df
-
-    # print("A:", A)
 
     ##############################
     # Populate allocation matrix #
@@ -110,7 +98,7 @@ def compute_energy(
     for i in range(0,len(S)):
         print("\t", i, ": ", end="")
         for j in range(0,len(S[0])):
-            print(S[i][j] + ", ", end='')
+            print(str(S[i][j]) + ", ", end='')
         print("")
 
     # Count number of threads per DPU
@@ -140,18 +128,18 @@ def compute_energy(
         W = S[d]
         print("[DEBUG] W:", W)
         # Compute: T[d] = sum[W[d]](t[A[d],:]) * k[N[d]]
-        for model in W:
+        for scheduled_index in range(len(W)):
             # Compute: sum[W[d]](t[A[d],:])
             # If allocated
-            if model != "":
-                # print("[DEBUG] model", model)
+            if W[scheduled_index]:
+                print("[DEBUG] model", M[scheduled_index])
                 T[d] += t.loc[
                         (t["ARCH"] == A[d])
                         &
-                        (t["Model"] == model)
+                        (t["Model"] == M[scheduled_index])
                     ]["Runtime (s)"].values[0]
         # Adjust for multi-threading (k[N[d]])
-        T[d] *= k[N[d]]
+        T[d] *= utils.k[N[d]]
     # print("[DEBUG] T:", T)
 
     # Compute total T_tot = max[d](T[d])
@@ -179,33 +167,33 @@ def compute_energy(
     for d in D:
         W = S[d]
         # Compute: E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
-        for model in W:
-            # Compute: sum[W[d]](p[A[d],] * t[A[d],:])
+        for scheduled_index in range(len(W)):
+            # Compute: sum[W[d]](t[A[d],:])
             # If allocated
-            if model != "":
+            if W[scheduled_index]:
                 # Extract runtime
                 runtime = t.loc[
                         (t["ARCH"] == A[d])
                         &
-                        (t["Model"] == model)
+                        (t["Model"] == M[scheduled_index])
                     ]["Runtime (s)"].values[0]
                 # Extract power
                 # PS
                 power_ps = p.loc[
                         (p["ARCH"] == A[d])
                         &
-                        (p["Model"] == model)
+                        (p["Model"] == M[scheduled_index])
                     ]["Power PS (mW)"].values[0]
                 # PL
                 power_pl = p.loc[
                         (p["ARCH"] == A[d])
                         &
-                        (p["Model"] == model)
+                        (p["Model"] == M[scheduled_index])
                     ]["Power PL (mW)"].values[0]
                 # Calculate compute energy
                 E[d] = (power_pl + power_ps) * runtime
         # Adjust for multi-threading (k[N[d]])
-        E[d] *= k[N[d]]
+        E[d] *= utils.k[N[d]]
 
     # Calculate idle energy
     for d in D:

@@ -3,6 +3,7 @@
 #   Synthetic data generation parameters for simulation
 
 # Imports
+import os
 import pandas
 import glob
 # Import custom
@@ -34,19 +35,27 @@ paths = glob.glob(wildcard_path)
 NUM_NPU_ARRAYS = len(paths)
 # Read from file
 hw_config_df_list = ["" for _ in range(NUM_NPU_ARRAYS)]
+hw_config_names   = ["" for _ in range(NUM_NPU_ARRAYS)]
 for i in range(0,NUM_NPU_ARRAYS):
     hw_config_df_list[i] = pandas.read_csv(paths[i])
     # print(paths[i], hw_config_df_list[i])
+    hw_config_names[i] = os.path.basename(paths[i])
+    # Strip-off extension (.csv)
+    hw_config_names[i] = hw_config_names[i][:-4]
 
 # Workloads
 wildcard_path = factors_dir + "/Workloads/*.csv"
 paths = glob.glob(wildcard_path)
 NUM_WORKLOADS = len(paths)
 # Read from file
-workload_df = ["" for _ in range(NUM_WORKLOADS)]
+workload_df     = ["" for _ in range(NUM_WORKLOADS)]
+workload_names  = ["" for _ in range(NUM_WORKLOADS)]
 for i in range(0,NUM_WORKLOADS):
     workload_df[i] = pandas.read_csv(paths[i])
     # print(paths[i], workload_df[i])
+    workload_names[i] = os.path.basename(paths[i])
+    # Strip-off extension (.csv)
+    workload_names[i] = workload_names[i][:-4]
 
 # Schedulers
 path = factors_dir + "/Schedulers/schedulers.csv"
@@ -62,10 +71,9 @@ NUM_SCHEDULERS = len(schedulers_df) # number of rows
 # Loop over hardware hw_configs
 for hw_config_index in range(0,NUM_NPU_ARRAYS):
     hw_config = hw_config_df_list[hw_config_index]
-    hw_config_name = hw_config.columns.values[0]
     # Check if feasible
     if not utils.is_multinpu_placeable(hw_config):
-        print("[ERROR] Design not placeable!:\n", hw_config_name)
+        print("[ERROR] Design not placeable!:\n", hw_config_names[hw_config_index])
         exit(1)
 
 ##################
@@ -94,16 +102,15 @@ for scheduler_index, scheduler_row in schedulers_df.iterrows():
 
     # Loop over hardware hw_configs
     for hw_config_index in range(0,NUM_NPU_ARRAYS):
-        hw_config_name = hw_config.columns.values[0]
-        print("[INFO] Multi-NPU design:", hw_config_name)
+        print("[INFO] Multi-NPU design:", hw_config_names[hw_config_index])
         # print(hw_config)
 
         # Loop over workloads
         for workload_index in range(0,NUM_WORKLOADS):
-            print("[INFO] Workload:", workload_df[workload_index].columns.values[0])
+            print("[INFO] Workload:", workload_names[workload_index])
 
             # DEBUG
-            continue
+            # continue
 
             # Call to simulation
             T_tot  [scheduler_index][workload_index][hw_config_index],  \
@@ -137,8 +144,8 @@ with open(filepath, "w") as fd:
                 for npu_index, npu_row in hw_config_df_list[hw_config_index].iterrows():
                     # Prepare line
                     concat_line = scheduler_row["Name"] + ";" + \
-                                workload_df[i].columns.values[0] + ";" + \
-                                hw_config_df_list[hw_config_index].columns.values[0] + ";" + \
+                                workload_names[workload_index] + ";" + \
+                                hw_config_names[hw_config_index] + ";" + \
                                 str(npu_row.values[0]) + ";" + \
                                 str(T_tot) + ";" + \
                                 str(E_tot) + ";" + \

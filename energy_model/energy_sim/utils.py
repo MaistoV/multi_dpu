@@ -6,7 +6,15 @@ import pandas
 # Based on linear regression model from TECS
 b0 = 0.231800862 # Intercept
 b1 = 0.717562696 # Num threads
-MAX_THREADS = 12
+MAX_THREADS = 128
+k = [0. for _ in range(MAX_THREADS)]
+for i in range(0,MAX_THREADS):
+    # Compute model (i+1 is the number of threads)
+    linreg_runtime = b0 + (b1 * (i+1))
+    # Compute reduction w.r.t. number of threads
+    k[i] = linreg_runtime / (i+1)
+k[0] = 1. # Adjust to exactly 1. for one thread
+# print("k:", k)
 
 workload_dict = [
         {
