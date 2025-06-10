@@ -2,7 +2,7 @@
 *.xmodel
 
 # Output data
-data/*
+# data/*
 
 # Plots
 *.png
