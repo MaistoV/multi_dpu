@@ -1,6 +1,9 @@
 # Compiled models
 *.xmodel
 
+# VSCode local
+.vscode
+
 # Output data
 # data/*
 
