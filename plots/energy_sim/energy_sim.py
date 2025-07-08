@@ -53,7 +53,7 @@ import hardcoded_allocations
 #   E_tot    : batch multi-DPU energy consumption
 #               E_tot = sum[D[:]](E[:])
 
-def compute_energy(
+def compute_Etot(
             config_index,
             workload,
             num_threads,

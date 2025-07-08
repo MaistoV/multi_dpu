@@ -129,7 +129,7 @@ for config_index in range(0,NUM_DPU_CONFIGS):
         T_tot   [workload_index][config_index], \
         E_tot   [workload_index][config_index], \
         E_idle  [workload_index][config_index] = \
-            energy_sim.compute_energy(
+            energy_sim.compute_Etot(
                         config_index,
                         workload,
                         num_threads,

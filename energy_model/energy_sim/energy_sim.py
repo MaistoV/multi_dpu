@@ -2,10 +2,9 @@
 #   Compute simulated energy consumption
 
 # Import
-import pandas
+# import pandas
 # Import custom
-import thread_allocation
-import utils
+from energy_sim import utils
 
 ######################
 # Energy consumption #
@@ -36,7 +35,7 @@ import utils
 # Allocation:
 #   W        : Workload (array of threads)
 #   Sigma    : Scheduling policy
-#   S[d,n]   : Allocation matrix {len(D) x num_threads}
+#   S[d,n]   : Allocation matrix {LEN_D x num_threads}
 #               => W[d] = S[d,:]
 #               => D[m] = S[:,m]
 #   D[m]     : target DPU for thread (m)
@@ -54,61 +53,62 @@ import utils
 #   E_tot    : batch multi-DPU energy consumption
 #               E_tot = sum[D[:]](E[:])
 
-def compute_energy(
-            scheduler_row,
-            hw_config_df,
-            workload_df,
-            runtime_df,
-            avg_power_df,
-            outdir,
+# TODO: refactor in two subfunctions
+# def compute_Ttot(
+#             hw_config_df,   # D array
+#             workload_df,    # W array
+#             S,              # Allocation matrix
+#             runtime_df,     # t(a,m)
+#             avg_power_df,   # p(a,mo)
+#         ):
+
+def compute_Etot(
+            hw_config_df,   # D array
+            workload_df,    # W array
+            S,              # Allocation matrix
+            runtime_df,     # t(a,m)
+            avg_power_df,   # p(a,mo)
         ):
 
+
     # Debug
-    # print("scheduler_row :", scheduler_row)
-    # print("hw_config_df  :", hw_config_df)
-    # print("workload_df   :", workload_df)
-    # print("num_threads   :", num_threads)
+    utils.print_log(f"hw_config_df  : {hw_config_df}")
+    utils.print_log(f"workload_df   : {workload_df}")
+    # Debug
+    if utils.DEBUG_ON :
+        print("[DEBUG][compute_Etot] S:")
+        for i in range(0,LEN_W):
+            print("\t", i, ": ", end="")
+            for j in range(0,LEN_D):
+                print(str(S[i][j]) + ", ", end='')
+            print("")
 
     ########################
     # Init data-structures #
     ########################
     # Unroll hw_config dataframe
     D = list(range(len(hw_config_df)))
-    print("D:", D)
+    utils.print_log(f"D: {D}")
     A = hw_config_df["ARCH"].values
-    print("A:", A)
+    utils.print_log(f"A: {A}")
     M = workload_df["Model"].values
-    print("M:", M)
+    utils.print_log(f"M: {M}")
+
+    # Pre-compute lengths
+    LEN_D = len(D)
+    LEN_W = len(M)
 
     # Load dataframes
     t = runtime_df
     p = avg_power_df
 
-    ##############################
-    # Populate allocation matrix #
-    ##############################
-    S = thread_allocation.thread_allocation(
-            scheduler_row,
-            hw_config_df,
-            workload_df,
-            outdir,
-        )
-    # Debug
-    print("[DEBUG] S:")
-    for i in range(0,len(S)):
-        print("\t", i, ": ", end="")
-        for j in range(0,len(S[0])):
-            print(str(S[i][j]) + ", ", end='')
-        print("")
-
     # Count number of threads per DPU
-    N = [0 for _ in range(len(D))]
-    for d in D:
-        N[d] = 0
-        for i in range(0,len(S[0])):
-            if S[d][i] != "":
+    N = [0 for _ in range(LEN_D)]
+    for i in range(0,LEN_W):
+        for d in D:
+            if S[i][d] == 1:
                 N[d] += 1
-    print("[DEBUG] N:", N)
+    utils.print_log(f"N: {N}")
 
     ###########
     # Runtime #
@@ -122,37 +122,37 @@ def compute_energy(
     #               => sum[D[:]](T[:]) = T_tot, for each (d)
 
     # Compute DPU runtimes
-    T = [0. for _ in range(len(D))]
-    for d in D:
-        print("[DEBUG] A[d]", A[d])
-        W = S[d]
-        print("[DEBUG] W:", W)
-        # Compute: T[d] = sum[W[d]](t[A[d],:]) * k[N[d]]
-        for scheduled_index in range(len(W)):
-            # Compute: sum[W[d]](t[A[d],:])
+    utils.print_log(f"[compute_Etot] Compute DPU runtimes")
+    T = [0. for _ in range(LEN_D)]
+    # Compute: T[d] = sum[W[d]](t[A[d],:]) * k[N[d]]
+    for thread_index in range(LEN_W):
+        # Compute: sum[W[d]](t[A[d],:])
+        for d in D:
+            utils.print_log(f"A[d] {A[d]}")
             # If allocated
-            if W[scheduled_index]:
-                print("[DEBUG] model", M[scheduled_index])
+            if S[thread_index][d]:
+                utils.print_log(f"model {M[thread_index]}")
                 T[d] += t.loc[
                         (t["ARCH"] == A[d])
                         &
-                        (t["Model"] == M[scheduled_index])
+                        (t["Model"] == M[thread_index])
                     ]["Runtime (s)"].values[0]
-        # Adjust for multi-threading (k[N[d]])
+    # Adjust for multi-threading (k[N[d]])
+    for d in D:
         T[d] *= utils.k[N[d]]
-    # print("[DEBUG] T:", T)
+    utils.print_log("T:" + str(T))
 
     # Compute total T_tot = max[d](T[d])
     T_tot = max(T)
-    # print("[DEBUG] T_tot:", T_tot)
+    utils.print_log("T_tot:" + str(T_tot))
 
     # Compute idle times
-    T_idle = [0. for _ in range(len(D))]
+    T_idle = [0. for _ in range(LEN_D)]
     for d in D:
         T_idle[d] = T_tot - T[d]
         # TBD
         # assert(math.isclose(sum(t[A[d]]) + T_idle[0], T))
-    # print("[DEBUG] T_idle:", T_idle)
+    utils.print_log("T_idle:" + str(T_idle))
 
     ######################
     # Energy consumption #
@@ -162,38 +162,40 @@ def compute_energy(
     #   E_tot    : batch multi-DPU energy consumption
     #               E_tot = sum[D[:]](E[:])
 
-    E = [0. for _ in range(len(D))]
-    E_idle = [0. for _ in range(len(D))]
-    for d in D:
-        W = S[d]
-        # Compute: E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
-        for scheduled_index in range(len(W)):
+    E = [0. for _ in range(LEN_D)]
+    E_idle = [0. for _ in range(LEN_D)]
+    # Compute: E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
+    for thread_index in range(LEN_W):
+        for d in D:
             # Compute: sum[W[d]](t[A[d],:])
             # If allocated
-            if W[scheduled_index]:
+            if S[thread_index][d]:
                 # Extract runtime
                 runtime = t.loc[
                         (t["ARCH"] == A[d])
                         &
-                        (t["Model"] == M[scheduled_index])
+                        (t["Model"] == M[thread_index])
                     ]["Runtime (s)"].values[0]
                 # Extract power
                 # PS
                 power_ps = p.loc[
                         (p["ARCH"] == A[d])
                         &
-                        (p["Model"] == M[scheduled_index])
+                        (p["Model"] == M[thread_index])
                     ]["Power PS (mW)"].values[0]
                 # PL
                 power_pl = p.loc[
                         (p["ARCH"] == A[d])
                         &
-                        (p["Model"] == M[scheduled_index])
+                        (p["Model"] == M[thread_index])
                     ]["Power PL (mW)"].values[0]
                 # Calculate compute energy
                 E[d] = (power_pl + power_ps) * runtime
-        # Adjust for multi-threading (k[N[d]])
+    # Adjust for multi-threading (k[N[d]])
+    for d in D:
         E[d] *= utils.k[N[d]]
+    # Print
+    utils.print_log("E:" + str(E))
 
     # Calculate idle energy
     for d in D:
@@ -210,26 +212,22 @@ def compute_energy(
             ]["Power PL (mW)"].values[0]
         # Calculate
         E_idle[d] = (power_idle_ps + power_idle_pl) * T_idle[d]
-
-    # print("[DEBUG] E:", E)
-    # print("[DEBUG] E_idle:", E_idle)
+    # Print
+    utils.print_log("E_idle: " +  str(E_idle))
 
     # Compute total E_tot = sum[D[:]](E[:])
     E_tot = sum(E)
-    # print("[DEBUG] E_tot:", E_tot)
+    utils.print_log(f"E_tot: {E_tot}")
 
     # Wasted energy
     E_idle_tot = sum(E_idle)
-    # print("[DEBUG] E_idle_tot:", E_idle_tot)
-    # energy_waste =  E_idle_tot / (E_tot + E_tot)
-    # print("[DEBUG] Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
-
-    # Print energy waster
+    utils.print_log("E_idle_tot:" + str(E_idle_tot))
+    # Percentage
     energy_waste =  E_idle_tot / (E_tot + E_idle_tot)
-    print("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
+    utils.print_log("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
 
     # Save to file
-
+    # TBD
 
     # Return values
     return T_tot, E_tot, E_idle_tot

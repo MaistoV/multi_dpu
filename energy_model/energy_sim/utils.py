@@ -13,7 +13,8 @@ for i in range(0,MAX_THREADS):
     linreg_runtime = b0 + (b1 * (i+1))
     # Compute reduction w.r.t. number of threads
     k[i] = linreg_runtime / (i+1)
-k[0] = 1. # Adjust to exactly 1. for one thread
+k[0] = 0. # Adjust to exactly 0. for no thread
+k[1] = 1. # Adjust to exactly 1. for one thread
 # print("k:", k)
 
 workload_dict = [
@@ -154,15 +155,42 @@ def is_multinpu_placeable(multiNPU_config_df):
             percentage = 100 * consumption / zcu102_resources_df[res].values[0]
             # Check if it fits
             if consumption > zcu102_resources_df[res].values:
-                print(
+                print_debug(
                         "ARCH " + "{:4}".format(row["ARCH"]) + ":",
                         res + " consumption", str(consumption) +
                         "/" + str(zcu102_resources_df[res].values[0]) +
                         " ({:2.3f}".format(percentage) + "%)"
                         )
-                print("[ERROR] Exceeding available " + res + " resources")
+                print_debug("[ERROR] Exceeding available " + res + " resources")
                 # Non-placeable
                 return False
     # Placeable
-    # print("[INFO] Hardware is placaeable!")
+    # print_debug("[INFO] Hardware is placaeable!")
     return True
+
+
+###############
+# Print utils #
+###############
+
+LOG_ON = False
+# LOG_ON = True
+def print_log( message ):
+    if LOG_ON :
+        print("[LOG]:", message)
+
+DEBUG_ON = False
+# DEBUG_ON = True
+def print_debug( message ):
+    if DEBUG_ON :
+        print("[DEBUG]:", message)
+
+def print_debug_nonl( message ):
+    if DEBUG_ON :
+        print("[DEBUG]:", message, end="")
+
+# INFO_ON = False
+INFO_ON = True
+def print_info( message ):
+    if INFO_ON :
+        print("[INFO]:", message)

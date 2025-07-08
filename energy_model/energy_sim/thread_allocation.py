@@ -3,9 +3,10 @@
 
 # Import
 import sys
-# caution: path[0] is reserved for script path (or '' in REPL)
-sys.path.insert(1, 'schedulers/')
-import round_robin
+from energy_sim import utils
+from schedulers import round_robin
+from schedulers import greedy
+
 
 # Wrapper function
 def thread_allocation (
@@ -13,11 +14,13 @@ def thread_allocation (
             hw_config_df,
             workload_df,
             outdir,
+            runtime_df,
+            avg_power_df,
         ):
 
     # Pre-allocate allocation matrix
-    # S in {|D| x |W|}
-    S = [["" for _ in range(len(workload_df))] for _ in range(len(hw_config_df))]
+    # S in {|W| x |D|}
+    S = [[0 for _ in range(len(hw_config_df))] for _ in range(len(workload_df))]
 
     # Reshuffle for randomness
     # NOTE: this is useless for "Exhaustive-search"
@@ -25,18 +28,18 @@ def thread_allocation (
 
     # Launch selected scheduler
     match scheduler_row["Name"]:
-        case "Exhaustive-search":
-            schedulers.thread_allocation_E(
-                hw_config_df,
-                workload_df,
-                S,
-            )
-        case "Batched Exhaustive-search":
-            schedulers.thread_allocation_BE(
-                hw_config_df,
-                workload_df,
-                S,
-            )
+        # case "Exhaustive-search":
+        #     schedulers.thread_allocation_E(
+        #         hw_config_df,
+        #         workload_df,
+        #         S,
+        #     )
+        # case "Batched Exhaustive-search":
+        #     schedulers.thread_allocation_BE(
+        #         hw_config_df,
+        #         workload_df,
+        #         S,
+        #     )
         case "Round Robin":
             round_robin.thread_allocation_RR(
                 hw_config_df,
@@ -44,15 +47,19 @@ def thread_allocation (
                 S,
             )
         case "Greedy":
-            schedulers.thread_allocation_G(
+            greedy.thread_allocation_G(
                 hw_config_df,
                 workload_df,
                 S,
+                runtime_df,
+                avg_power_df,
+                outdir,
             )
 
     # Debug
-    print("[INFO] S:")
-    [print(*line) for line in S]
+    utils.print_info("[thread_allocation] S:")
+    if utils.INFO_ON:
+        [print(*line) for line in S]
 
 
     # Save S and shuffle to file

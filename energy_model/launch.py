@@ -7,8 +7,9 @@ import os
 import pandas
 import glob
 # Import custom
-import utils
-import energy_sim
+from energy_sim import energy_sim
+from energy_sim import utils
+from energy_sim import thread_allocation
 
 ###########################
 # Load pre-processed data #
@@ -30,7 +31,9 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 factors_dir = "energy_model/experiment/"
 
 # Hardware hw_configs
-wildcard_path = factors_dir + "/NPUs/*.csv"
+# wildcard_path = factors_dir + "/NPUs/*.csv"
+wildcard_path = factors_dir + "/NPUs/1x512_1x1024_1x2304_1x4096.csv" # DEBUG
+# wildcard_path = factors_dir + "/NPUs/4x512.csv" # DEBUG
 paths = glob.glob(wildcard_path)
 NUM_NPU_ARRAYS = len(paths)
 # Read from file
@@ -44,7 +47,8 @@ for i in range(0,NUM_NPU_ARRAYS):
     hw_config_names[i] = hw_config_names[i][:-4]
 
 # Workloads
-wildcard_path = factors_dir + "/Workloads/*.csv"
+# wildcard_path = factors_dir + "/Workloads/*.csv"
+wildcard_path = factors_dir + "/Workloads/Workload_Small.csv" # DEBUG
 paths = glob.glob(wildcard_path)
 NUM_WORKLOADS = len(paths)
 # Read from file
@@ -91,44 +95,55 @@ T_tot  = [[[0. for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] f
 E_tot  = [[[0. for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS) ]
 E_idle = [[[[0. for _ in range(MAX_NPUS)]
                  for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS)]
-T_d = [[[[0. for _ in range(MAX_NPUS)]
-                 for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS)]
-E_d = [[[[0. for _ in range(MAX_NPUS)]
-                 for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS)]
+# T_d = [[[[0. for _ in range(MAX_NPUS)]
+#                  for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS)]
+# E_d = [[[[0. for _ in range(MAX_NPUS)]
+#                  for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS)]
+
 
 # Loop over schedulers
 for scheduler_index, scheduler_row in schedulers_df.iterrows():
-    print("[INFO] Scheduler:", scheduler_row["Name"])
+    utils.print_info(f"Scheduler: {scheduler_row.Name}")
 
     # Loop over hardware hw_configs
     for hw_config_index in range(0,NUM_NPU_ARRAYS):
-        print("[INFO] Multi-NPU design:", hw_config_names[hw_config_index])
+        utils.print_info(f"Multi-NPU design: {hw_config_names[hw_config_index]}")
         # print(hw_config)
 
         # Loop over workloads
         for workload_index in range(0,NUM_WORKLOADS):
-            print("[INFO] Workload:", workload_names[workload_index])
+            utils.print_info(f"Workload: {workload_names[workload_index]}")
 
-            # DEBUG
-            # continue
+            # Populate allocation matrix S
+            ######################################
+            # TBD: Latency measure: start
+            S = thread_allocation.thread_allocation (
+                scheduler_row,
+                hw_config_df_list[hw_config_index],
+                workload_df[workload_index],
+                outdir,
+                runtime_df,
+                avg_power_df,
+            )
+            # TBD: Latency measure: end
+            ######################################
 
             # Call to simulation
             T_tot  [scheduler_index][workload_index][hw_config_index],  \
             E_tot  [scheduler_index][workload_index][hw_config_index],  \
             E_idle [scheduler_index][workload_index][hw_config_index] = \
-                energy_sim.compute_energy(
-                            scheduler_row,
+                energy_sim.compute_Etot(
                             hw_config_df_list[hw_config_index],
                             workload_df[workload_index],
+                            S,
                             runtime_df,
                             avg_power_df,
-                            outdir,
                         )
 
 # Debug
-# print("[INFO] T_tot:", T_tot)
-# print("[INFO] E_tot:", E_tot)
-# print("[INFO] E_idle:", E_idle)
+utils.print_log(" T_tot : " + str(T_tot))
+utils.print_log(" E_tot : " + str(E_tot))
+utils.print_log(" E_idle: " + str(E_idle))
 
 # Save NPU metrics to file
 filepath = outdir + "/schedule.csv"
