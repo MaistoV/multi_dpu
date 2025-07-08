@@ -13,9 +13,9 @@ def thread_allocation_RR (
             # NOTE: this could be handled more efficiently with a static
             #   variable holding the previously assigned NPU.
             #   Although, the advantage might be minimal in python
-            if d_index == thread_index % LEN_D:
+            if d_index == (thread_index % LEN_D):
                 S[d_index][thread_index] = 1
-            else:
-                S[d_index][thread_index] = 0
+            # else:
+                # S[d_index][thread_index] = 0
 
 
