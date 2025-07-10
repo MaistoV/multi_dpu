@@ -10,7 +10,7 @@ import math
 import matplotlib.pyplot as plt
 import pandas
 import plot_common as common
-import energy_sim
+import plots.old_energy_sim.old_energy_sim as old_energy_sim
 
 plt.rcParams.update({'font.size': common.FONT_SIZE + 2})
 
@@ -111,7 +111,7 @@ for config_index in range(0,NUM_DPU_CONFIGS):
     print(config["Config"])
 
     # Check if feasible
-    if not energy_sim.is_multidpu_placeable(config["Config"]):
+    if not old_energy_sim.is_multidpu_placeable(config["Config"]):
         print("[ERROR] Design not placeable!:\n", config["Name"])
         exit(1)
 
@@ -129,7 +129,7 @@ for config_index in range(0,NUM_DPU_CONFIGS):
         T_tot   [workload_index][config_index], \
         E_tot   [workload_index][config_index], \
         E_idle  [workload_index][config_index] = \
-            energy_sim.compute_Etot(
+            old_energy_sim.compute_Etot(
                         config_index,
                         workload,
                         num_threads,
