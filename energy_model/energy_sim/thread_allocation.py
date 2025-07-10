@@ -57,26 +57,26 @@ def thread_allocation (
             )
 
     # Debug
-    utils.print_info("[thread_allocation] S:")
-    if utils.INFO_ON:
+    utils.print_debug("[thread_allocation] S:")
+    if utils.DEBUG_ON:
         [print(*line) for line in S]
 
 
     # Save S and shuffle to file
-    if outdir != "":
-        filepath = outdir + "/schedule.csv"
-        # Open file (in append)
-        with open(filepath, "a") as fd:
-            # Write header
-            # fd.write("Workload;Shuffle(list);S\n")
+    # if outdir != "":
+    #     filepath = outdir + "/schedule" + ".csv"
+    #     # Open file (in append)
+    #     with open(filepath, "a") as fd:
+    #         # Write header
+    #         # fd.write("Workload;Shuffle(list);S\n")
 
-            # Prepare line
-            concat_line = str(workload_df.columns.values[0]) + ";" + \
-                str(workload_df.values) + ";" + \
-                str(S)
+    #         # Prepare line
+    #         concat_line = str(workload_df.columns.values[0]) + ";" + \
+    #             str(workload_df.values) + ";" + \
+    #             str(S)
 
-            # Write to file
-            fd.write(concat_line)
+    #         # Write to file
+    #         fd.write(concat_line)
 
     # Return schedule
     return S
