@@ -194,3 +194,7 @@ INFO_ON = True
 def print_info( message ):
     if INFO_ON :
         print("[INFO]:", message)
+
+def print_error( message ):
+    print("[ERROR]:", message)
+

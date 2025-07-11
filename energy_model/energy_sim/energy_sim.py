@@ -70,19 +70,6 @@ def compute_Etot(
             avg_power_df,   # p(a,mo)
         ):
 
-
-    # Debug
-    utils.print_log(f"hw_config_df  : {hw_config_df}")
-    utils.print_log(f"workload_df   : {workload_df}")
-    # Debug
-    if utils.DEBUG_ON :
-        print("[DEBUG][compute_Etot] S:")
-        for i in range(0,LEN_W):
-            print("\t", i, ": ", end="")
-            for j in range(0,LEN_D):
-                print(str(S[i][j]) + ", ", end='')
-            print("")
-
     ########################
     # Init data-structures #
     ########################
@@ -97,6 +84,18 @@ def compute_Etot(
     # Pre-compute lengths
     LEN_D = len(D)
     LEN_W = len(M)
+
+    # Debug
+    utils.print_log(f"hw_config_df  : {hw_config_df}")
+    utils.print_log(f"workload_df   : {workload_df}")
+    # Debug
+    if utils.DEBUG_ON :
+        print("[DEBUG][compute_Etot] S:")
+        for i in range(0,LEN_W):
+            print("\t", i, ": ", end="")
+            for j in range(0,LEN_D):
+                print(str(S[i][j]) + ", ", end='')
+            print("")
 
     # Load dataframes
     t = runtime_df

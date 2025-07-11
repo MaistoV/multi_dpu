@@ -6,6 +6,7 @@ import sys
 from energy_sim import utils
 from schedulers import round_robin
 from schedulers import greedy
+from schedulers import exhaustive
 
 
 # Wrapper function
@@ -28,12 +29,14 @@ def thread_allocation (
 
     # Launch selected scheduler
     match scheduler_row["Name"]:
-        # case "Exhaustive-search":
-        #     schedulers.thread_allocation_E(
-        #         hw_config_df,
-        #         workload_df,
-        #         S,
-        #     )
+        case "Exhaustive":
+            exhaustive.thread_allocation_E(
+                hw_config_df,
+                workload_df,
+                S,
+                runtime_df,
+                avg_power_df,
+            )
         # case "Batched Exhaustive-search":
         #     schedulers.thread_allocation_BE(
         #         hw_config_df,
@@ -55,6 +58,9 @@ def thread_allocation (
                 avg_power_df,
                 outdir,
             )
+        case _:
+            utils.print_error("Unsupported scheduler " + scheduler_row["Name"])
+            exit(1)
 
     # Debug
     utils.print_debug("[thread_allocation] S:")

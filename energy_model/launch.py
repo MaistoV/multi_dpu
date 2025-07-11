@@ -32,9 +32,10 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 factors_dir = "energy_model/experiment/"
 
 # Hardware hw_configs
-wildcard_path = factors_dir + "/NPUs/*.csv"
+# wildcard_path = factors_dir + "/NPUs/*.csv"
 # wildcard_path = factors_dir + "/NPUs/1x512_1x1024_1x2304_1x4096.csv" # DEBUG
 # wildcard_path = factors_dir + "/NPUs/4x512.csv" # DEBUG
+wildcard_path = factors_dir + "/NPUs/3x4096.csv" # DEBUG
 paths = glob.glob(wildcard_path)
 NUM_NPU_ARRAYS = len(paths)
 # Read from file
@@ -48,8 +49,8 @@ for i in range(0,NUM_NPU_ARRAYS):
     hw_config_names[i] = hw_config_names[i][:-4]
 
 # Workloads
-wildcard_path = factors_dir + "/Workloads/*.csv"
-# wildcard_path = factors_dir + "/Workloads/Workload_Small.csv" # DEBUG
+# wildcard_path = factors_dir + "/Workloads/*.csv"
+wildcard_path = factors_dir + "/Workloads/Workload_Small.csv" # DEBUG
 paths = glob.glob(wildcard_path)
 NUM_WORKLOADS = len(paths)
 # Read from file

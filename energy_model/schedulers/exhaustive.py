@@ -2,12 +2,135 @@
 #   Exhaustive, optimal scheduler.
 #   This is implementation does not need to be optimized for efficiency.
 
+import sys
+import energy_sim
+import itertools
+from energy_sim import utils
+
+def is_schedule_legal (
+                        len_d,
+                        len_w,
+                        schedule,
+                    ) -> bool:
+
+        # For each row/thread
+        for t in range(0,len_w):
+            # Check allocation is legal
+            if ( sum(schedule[t]) != 1 ):
+                return False
+        # All good
+        return True
+
+
 def thread_allocation_E (
                             hw_config_df,
                             workload_df,
-                            S
+                            S,
+                            runtime_df,     # t(a,m)
+                            avg_power_df,   # p(a,m)
                         ):
-    tbd = 1
+
+    # Pre-allocate output arrays
+    LEN_D = len(hw_config_df)
+    LEN_W = len(workload_df)
+    # Preallocate all legal schedules (careful, this grows exponentially)
+    MAX_SCHEDULES = LEN_D ** LEN_W
+    T_tot  = [0. for _ in range(MAX_SCHEDULES)]
+    E_tot  = [0. for _ in range(MAX_SCHEDULES)]
+    E_idle = [0. for _ in range(MAX_SCHEDULES)]
+
+    # Debug
+    utils.print_debug(f"LEN_D: {LEN_D}:")
+    utils.print_debug(f"LEN_W: {LEN_W}:")
+    utils.print_debug(f"MAX_SCHEDULES: {MAX_SCHEDULES}:")
+
+    ################################
+    # Generate all legal schedules #
+    ################################
+
+    legal_schedules = [[[0 for _ in range(LEN_D)] for _ in range(LEN_W)] for _ in range(MAX_SCHEDULES)]
+    # # For each thread t
+    # for thread_index in range(0,LEN_W):
+    #     # Reset counter
+    #     schedule_index = 0
+    # For each NPU d
+    legal_rows = [[0 for _ in range(LEN_D)] for _ in range(LEN_D)]
+    for d in range(0,LEN_D):
+        legal_rows[d][d] = 1
+    utils.print_log(f"legal_rows {legal_rows}")
+
+    values = [value for value in range(LEN_W)]
+    # combination length -> number of threads
+    target_length = LEN_W
+    # All possible permutation combinations
+    combinations = list(itertools.product(values, repeat=target_length))
+    assert(len(combinations) != 0)
+
+    # For each combination
+    schedule_index = 0
+    for combo in combinations:
+        utils.print_log(f"combo {combo}")
+        thread_index = 0
+        for npu_index in combo:
+            # print("npu_index", npu_index)
+            # Allocate to NPU d
+            legal_schedules[schedule_index][thread_index] = legal_rows[npu_index]
+            thread_index += 1
+        # Increment counter
+        schedule_index += 1
+
+    # Debug
+    if utils.DEBUG_ON:
+        # for schedule_index in range(0,MAX_SCHEDULES):
+        #     utils.print_debug(f"{schedule_index}:")
+        #     [print(*line) for line in legal_schedules[schedule_index]]
+        for schedule_index in range(0,MAX_SCHEDULES):
+            # Check schedule legality
+            if not is_schedule_legal (
+                        len_d=LEN_D,
+                        len_w=LEN_W,
+                        schedule=legal_schedules[schedule_index]
+                    ):
+                utils.print_error("Illegal schedule:")
+                [print(*line) for line in legal_schedules[schedule_index]]
+                exit(1)
+            # Print
+            utils.print_debug(f"{schedule_index}:")
+            [print(*line) for line in legal_schedules[schedule_index]]
+
+    # For each possible schedule
+    min_tot = sys.maxsize
+    best_index = 0
+    for schedule_index in range(0,MAX_SCHEDULES):
+        # Compute energy
+        T_tot  [schedule_index] ,  \
+        E_tot  [schedule_index] ,  \
+        E_idle [schedule_index]  = \
+            energy_sim.energy_sim.compute_Etot(
+                        hw_config_df,   # D array
+                        workload_df,    # W array (up to this thread)
+                        legal_schedules[schedule_index], # Allocation matrix (running copy)
+                        runtime_df,     # t(a,m)
+                        avg_power_df,   # p(a,m)
+                    )
+
+        # Compute argmin
+        # TODO: extend for T_tot and E_idle
+        if T_tot[schedule_index] < min_tot:
+            utils.print_debug(f"T_tot: {T_tot[schedule_index]}")
+            utils.print_debug(f"min_tot: {min_tot}")
+            utils.print_debug(f"Updating schedule to:")
+            if utils.DEBUG_ON:
+                [print(*line) for line in legal_schedules[schedule_index]]
+            # Update minimum
+            min_tot = T_tot[schedule_index]
+            # Save schedule
+            best_index = schedule_index
+
+        # PMS...
+        for i in range(0, len(S)):
+            for j in range(0, len(S[0])):
+                S[i][j] = legal_schedules[best_index][i][j]
 
 
 
