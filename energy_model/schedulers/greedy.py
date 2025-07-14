@@ -11,7 +11,6 @@ def thread_allocation_G (
                             S: list[list[int]],
                             runtime_df,
                             avg_power_df,
-                            outdir,
                             compute_Ttot: bool,
                             compute_Etot: bool,
                             compute_E_idle: bool,

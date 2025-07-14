@@ -1,4 +1,6 @@
-Name,Symbol
-Batched-Exhaustive,$\sigma_{EB}$
-Round-Robin,$\sigma_{RR}$
-Greedy,$\sigma_{G}$
+Name,Symbol,Batch_Size
+Round-Robin,$\P_{RR}$,0
+Greedy,$\P_{G}$,0
+Batched-Exhaustive,$\P_{EB}$,2
+Batched-Exhaustive,$\P_{EB}$,3
+Batched-Exhaustive,$\P_{EB}$,4

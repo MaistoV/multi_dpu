@@ -161,15 +161,15 @@ def is_multinpu_placeable(multiNPU_config_df):
             percentage = 100 * consumption / zcu102_resources_df[res].values[0]
             # Check if it fits
             if consumption > zcu102_resources_df[res].values:
-                print_debug(
-                        "ARCH " + "{:4}".format(row["ARCH"]) + ":" +
-                        res + " consumption", str(consumption) +
-                        "/" + str(zcu102_resources_df[res].values[0]) +
+                print_string = "ARCH " + "{:4}".format(row["ARCH"]) + ":" + \
+                        res + " consumption", str(consumption) + \
+                        "/" + str(zcu102_resources_df[res].values[0]) + \
                         " ({:2.3f}".format(percentage) + "%)"
-                        )
+                print_debug(print_string)
                 print_debug("[ERROR] Exceeding available " + res + " resources")
                 # Non-placeable
                 return False
+
     # Placeable
     # print_debug("[INFO] Hardware is placaeable!")
     return True

@@ -1,4 +1,5 @@
 Model
+ResNet-50
 MobileNet
-MobileNet
-MobileNet
+DenseNet-201
+VGG-16

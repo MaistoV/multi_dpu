@@ -97,8 +97,8 @@ def compute_energy_model(
     utils.print_log(f"hw_config_df  : {hw_config_df}")
     utils.print_log(f"workload_df   : {workload_df}")
     # Debug
-    if utils.DEBUG_ON :
-        print("[DEBUG][compute_energy_model] S:")
+    if utils.LOG_ON :
+        utils.print_log("[compute_energy_model] S:")
         for i in range(0,LEN_W):
             print("\t", i, ": ", end="")
             for j in range(0,LEN_D):

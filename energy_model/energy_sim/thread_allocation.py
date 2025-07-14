@@ -15,7 +15,6 @@ def thread_allocation (
             scheduler_row,
             hw_config_df,
             workload_df,
-            outdir,
             runtime_df,
             avg_power_df,
             compute_Ttot : bool,
@@ -35,41 +34,40 @@ def thread_allocation (
     match scheduler_row["Name"]:
         case "Exhaustive":
             exhaustive.thread_allocation_E(
-                hw_config_df,
-                workload_df,
-                S,
-                runtime_df,
-                avg_power_df,
+                hw_config_df=hw_config_df,
+                workload_df=workload_df,
+                S=S,
+                runtime_df=runtime_df,
+                avg_power_df=avg_power_df,
                 compute_Ttot=compute_Ttot,
                 compute_Etot=compute_Etot,
                 compute_E_idle=compute_E_idle,
             )
         case "Batched-Exhaustive":
             batched_exhaustive.thread_allocation_BE(
-                # batch_size=B,
-                hw_config_df,
-                workload_df,
-                S,
-                runtime_df,
-                avg_power_df,
+                hw_config_df=hw_config_df,
+                workload_df=workload_df,
+                batch_size=int(scheduler_row["Batch_Size"]),
+                S=S,
+                runtime_df=runtime_df,
+                avg_power_df=avg_power_df,
                 compute_Ttot=compute_Ttot,
                 compute_Etot=compute_Etot,
                 compute_E_idle=compute_E_idle,
             )
         case "Round-Robin":
             round_robin.thread_allocation_RR(
-                hw_config_df,
-                workload_df,
-                S,
+                hw_config_df=hw_config_df,
+                workload_df=workload_df,
+                S=S,
             )
         case "Greedy":
             greedy.thread_allocation_G(
-                hw_config_df,
-                workload_df,
-                S,
-                runtime_df,
-                avg_power_df,
-                outdir,
+                hw_config_df=hw_config_df,
+                workload_df=workload_df,
+                S=S,
+                runtime_df=runtime_df,
+                avg_power_df=avg_power_df,
                 compute_Ttot=compute_Ttot,
                 compute_Etot=compute_Etot,
                 compute_E_idle=compute_E_idle,

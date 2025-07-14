@@ -9,12 +9,13 @@ from schedulers import exhaustive
 # TODO: either
 #   1. export this to experimental factor
 #   2. compute from LEN_W and LEN_D
-batch_size = 4
+# batch_size = 4
 
 def thread_allocation_BE (
                             hw_config_df,
                             workload_df,
                             S: list[list[int]],
+                            batch_size: int,
                             runtime_df,     # t(a,m)
                             avg_power_df,   # p(a,m)
                             compute_Ttot: bool,
