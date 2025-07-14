@@ -59,8 +59,8 @@ def thread_allocation_E (
         legal_rows[d][d] = 1
     utils.print_log(f"legal_rows {legal_rows}")
 
-    values = [value for value in range(LEN_W)]
-    # combination length -> number of threads
+    values = [value for value in range(LEN_D)]
+    # combination length -> number of NPUs
     target_length = LEN_W
     # All possible permutation combinations
     combinations = list(itertools.product(values, repeat=target_length))
@@ -72,7 +72,6 @@ def thread_allocation_E (
         utils.print_log(f"combo {combo}")
         thread_index = 0
         for npu_index in combo:
-            # print("npu_index", npu_index)
             # Allocate to NPU d
             legal_schedules[schedule_index][thread_index] = legal_rows[npu_index]
             thread_index += 1
