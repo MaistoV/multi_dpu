@@ -1,2 +1,4 @@
 Name,Symbol
-Exhaustive,$\sigma_{E}$
+Batched-Exhaustive,$\sigma_{EB}$
+Round-Robin,$\sigma_{RR}$
+Greedy,$\sigma_{G}$

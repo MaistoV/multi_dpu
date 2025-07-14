@@ -57,22 +57,30 @@ from energy_sim import utils
 # def compute_Ttot(
 #             hw_config_df,   # D array
 #             workload_df,    # W array
-#             S,              # Allocation matrix
+#             S: list[list[int]],              # Allocation matrix
 #             runtime_df,     # t(a,m)
 #             avg_power_df,   # p(a,mo)
 #         ):
 
-def compute_Etot(
+def compute_energy_model(
             hw_config_df,   # D array
             workload_df,    # W array
-            S,              # Allocation matrix
+            S: list[list[int]],              # Allocation matrix
             runtime_df,     # t(a,m)
             avg_power_df,   # p(a,mo)
+            compute_Ttot: bool,
+            compute_Etot: bool,
+            compute_E_idle: bool,
         ):
 
     ########################
     # Init data-structures #
     ########################
+    # Init return values
+    T_tot = 0
+    E_tot = 0
+    E_idle_tot = 0
+
     # Unroll hw_config dataframe
     D = list(range(len(hw_config_df)))
     utils.print_log(f"D: {D}")
@@ -90,7 +98,7 @@ def compute_Etot(
     utils.print_log(f"workload_df   : {workload_df}")
     # Debug
     if utils.DEBUG_ON :
-        print("[DEBUG][compute_Etot] S:")
+        print("[DEBUG][compute_energy_model] S:")
         for i in range(0,LEN_W):
             print("\t", i, ": ", end="")
             for j in range(0,LEN_D):
@@ -121,37 +129,38 @@ def compute_Etot(
     #               => sum[D[:]](T[:]) = T_tot, for each (d)
 
     # Compute DPU runtimes
-    utils.print_log(f"[compute_Etot] Compute DPU runtimes")
-    T = [0. for _ in range(LEN_D)]
-    # Compute: T[d] = sum[W[d]](t[A[d],:]) * k[N[d]]
-    for thread_index in range(LEN_W):
-        # Compute: sum[W[d]](t[A[d],:])
+    if compute_Ttot:
+        utils.print_log(f"[compute_energy_model] Compute DPU runtimes")
+        T = [0. for _ in range(LEN_D)]
+        # Compute: T[d] = sum[W[d]](t[A[d],:]) * k[N[d]]
+        for thread_index in range(LEN_W):
+            # Compute: sum[W[d]](t[A[d],:])
+            for d in D:
+                utils.print_log(f"A[d] {A[d]}")
+                # If allocated
+                if S[thread_index][d]:
+                    utils.print_log(f"model {M[thread_index]}")
+                    T[d] += t.loc[
+                            (t["ARCH"] == A[d])
+                            &
+                            (t["Model"] == M[thread_index])
+                        ]["Runtime (s)"].values[0]
+        # Adjust for multi-threading (k[N[d]])
         for d in D:
-            utils.print_log(f"A[d] {A[d]}")
-            # If allocated
-            if S[thread_index][d]:
-                utils.print_log(f"model {M[thread_index]}")
-                T[d] += t.loc[
-                        (t["ARCH"] == A[d])
-                        &
-                        (t["Model"] == M[thread_index])
-                    ]["Runtime (s)"].values[0]
-    # Adjust for multi-threading (k[N[d]])
-    for d in D:
-        T[d] *= utils.k[N[d]]
-    utils.print_log("T:" + str(T))
+            T[d] *= utils.k[N[d]]
+        utils.print_log("T:" + str(T))
 
-    # Compute total T_tot = max[d](T[d])
-    T_tot = max(T)
-    utils.print_log("T_tot:" + str(T_tot))
+        # Compute total T_tot = max[d](T[d])
+        T_tot = max(T)
+        utils.print_log("T_tot:" + str(T_tot))
 
-    # Compute idle times
-    T_idle = [0. for _ in range(LEN_D)]
-    for d in D:
-        T_idle[d] = T_tot - T[d]
-        # TBD
-        # assert(math.isclose(sum(t[A[d]]) + T_idle[0], T))
-    utils.print_log("T_idle:" + str(T_idle))
+        # Compute idle times
+        T_idle = [0. for _ in range(LEN_D)]
+        for d in D:
+            T_idle[d] = T_tot - T[d]
+            # TBD
+            # assert(math.isclose(sum(t[A[d]]) + T_idle[0], T))
+        utils.print_log("T_idle:" + str(T_idle))
 
     ######################
     # Energy consumption #
@@ -161,69 +170,73 @@ def compute_Etot(
     #   E_tot    : batch multi-DPU energy consumption
     #               E_tot = sum[D[:]](E[:])
 
-    E = [0. for _ in range(LEN_D)]
-    E_idle = [0. for _ in range(LEN_D)]
-    # Compute: E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
-    for thread_index in range(LEN_W):
+    if compute_Etot:
+        E = [0. for _ in range(LEN_D)]
+        # Compute: E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
+        for thread_index in range(LEN_W):
+            for d in D:
+                # Compute: sum[W[d]](t[A[d],:])
+                # If allocated
+                if S[thread_index][d]:
+                    # Extract runtime
+                    runtime = t.loc[
+                            (t["ARCH"] == A[d])
+                            &
+                            (t["Model"] == M[thread_index])
+                        ]["Runtime (s)"].values[0]
+                    # Extract power
+                    # PS
+                    power_ps = p.loc[
+                            (p["ARCH"] == A[d])
+                            &
+                            (p["Model"] == M[thread_index])
+                        ]["Power PS (mW)"].values[0]
+                    # PL
+                    power_pl = p.loc[
+                            (p["ARCH"] == A[d])
+                            &
+                            (p["Model"] == M[thread_index])
+                        ]["Power PL (mW)"].values[0]
+                    # Calculate compute energy
+                    E[d] = (power_pl + power_ps) * runtime
+        # Adjust for multi-threading (k[N[d]])
         for d in D:
-            # Compute: sum[W[d]](t[A[d],:])
-            # If allocated
-            if S[thread_index][d]:
-                # Extract runtime
-                runtime = t.loc[
-                        (t["ARCH"] == A[d])
-                        &
-                        (t["Model"] == M[thread_index])
-                    ]["Runtime (s)"].values[0]
-                # Extract power
-                # PS
-                power_ps = p.loc[
-                        (p["ARCH"] == A[d])
-                        &
-                        (p["Model"] == M[thread_index])
-                    ]["Power PS (mW)"].values[0]
-                # PL
-                power_pl = p.loc[
-                        (p["ARCH"] == A[d])
-                        &
-                        (p["Model"] == M[thread_index])
-                    ]["Power PL (mW)"].values[0]
-                # Calculate compute energy
-                E[d] = (power_pl + power_ps) * runtime
-    # Adjust for multi-threading (k[N[d]])
-    for d in D:
-        E[d] *= utils.k[N[d]]
-    # Print
-    utils.print_log("E:" + str(E))
+            E[d] *= utils.k[N[d]]
+        # Print
+        utils.print_log("E:" + str(E))
 
-    # Calculate idle energy
-    for d in D:
-        # Idle power
-        power_idle_ps = p.loc[
-                (p["ARCH"] == A[d])
-                &
-                (p["Model"] == "Idle")
-            ]["Power PS (mW)"].values[0]
-        power_idle_pl = p.loc[
-                (p["ARCH"] == A[d])
-                &
-                (p["Model"] == "Idle")
-            ]["Power PL (mW)"].values[0]
-        # Calculate
-        E_idle[d] = (power_idle_ps + power_idle_pl) * T_idle[d]
-    # Print
-    utils.print_log("E_idle: " +  str(E_idle))
+        # Compute total E_tot = sum[D[:]](E[:])
+        E_tot = sum(E)
+        utils.print_log(f"E_tot: {E_tot}")
 
-    # Compute total E_tot = sum[D[:]](E[:])
-    E_tot = sum(E)
-    utils.print_log(f"E_tot: {E_tot}")
+    if compute_E_idle:
+        # Calculate idle energy
+        E_idle = [0. for _ in range(LEN_D)]
 
-    # Wasted energy
-    E_idle_tot = sum(E_idle)
-    utils.print_log("E_idle_tot:" + str(E_idle_tot))
-    # Percentage
-    energy_waste =  E_idle_tot / (E_tot + E_idle_tot)
-    utils.print_log("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
+        # For each NPU
+        for d in D:
+            # Idle power
+            power_idle_ps = p.loc[
+                    (p["ARCH"] == A[d])
+                    &
+                    (p["Model"] == "Idle")
+                ]["Power PS (mW)"].values[0]
+            power_idle_pl = p.loc[
+                    (p["ARCH"] == A[d])
+                    &
+                    (p["Model"] == "Idle")
+                ]["Power PL (mW)"].values[0]
+            # Calculate
+            E_idle[d] = (power_idle_ps + power_idle_pl) * T_idle[d]
+        # Print
+        utils.print_log("E_idle: " +  str(E_idle))
+
+        # Wasted energy
+        E_idle_tot = sum(E_idle)
+        utils.print_log("E_idle_tot:" + str(E_idle_tot))
+        # Percentage
+        energy_waste =  E_idle_tot / (E_tot + E_idle_tot)
+        utils.print_log("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
 
     # Save to file
     # TBD

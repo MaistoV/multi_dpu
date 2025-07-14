@@ -7,6 +7,7 @@ from energy_sim import utils
 from schedulers import round_robin
 from schedulers import greedy
 from schedulers import exhaustive
+from schedulers import batched_exhaustive
 
 
 # Wrapper function
@@ -17,6 +18,9 @@ def thread_allocation (
             outdir,
             runtime_df,
             avg_power_df,
+            compute_Ttot : bool,
+            compute_Etot : bool,
+            compute_E_idle : bool,
         ):
 
     # Pre-allocate allocation matrix
@@ -36,14 +40,23 @@ def thread_allocation (
                 S,
                 runtime_df,
                 avg_power_df,
+                compute_Ttot=compute_Ttot,
+                compute_Etot=compute_Etot,
+                compute_E_idle=compute_E_idle,
             )
-        # case "Batched Exhaustive-search":
-        #     schedulers.thread_allocation_BE(
-        #         hw_config_df,
-        #         workload_df,
-        #         S,
-        #     )
-        case "Round Robin":
+        case "Batched-Exhaustive":
+            batched_exhaustive.thread_allocation_BE(
+                # batch_size=B,
+                hw_config_df,
+                workload_df,
+                S,
+                runtime_df,
+                avg_power_df,
+                compute_Ttot=compute_Ttot,
+                compute_Etot=compute_Etot,
+                compute_E_idle=compute_E_idle,
+            )
+        case "Round-Robin":
             round_robin.thread_allocation_RR(
                 hw_config_df,
                 workload_df,
@@ -57,6 +70,9 @@ def thread_allocation (
                 runtime_df,
                 avg_power_df,
                 outdir,
+                compute_Ttot=compute_Ttot,
+                compute_Etot=compute_Etot,
+                compute_E_idle=compute_E_idle,
             )
         case _:
             utils.print_error("Unsupported scheduler " + scheduler_row["Name"])

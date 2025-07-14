@@ -29,13 +29,18 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 #############################
 # Load experimental factors #
 #############################
+# Select response variable
+compute_Ttot=True
+compute_Etot=False
+compute_E_idle=False
+
 factors_dir = "energy_model/experiment/"
 
 # Hardware hw_configs
-# wildcard_path = factors_dir + "/NPUs/*.csv"
+wildcard_path = factors_dir + "/NPUs/*.csv"
 # wildcard_path = factors_dir + "/NPUs/1x512_1x1024_1x2304_1x4096.csv" # DEBUG
 # wildcard_path = factors_dir + "/NPUs/4x512.csv" # DEBUG
-wildcard_path = factors_dir + "/NPUs/3x4096.csv" # DEBUG
+# wildcard_path = factors_dir + "/NPUs/3x4096.csv" # DEBUG
 paths = glob.glob(wildcard_path)
 NUM_NPU_ARRAYS = len(paths)
 # Read from file
@@ -49,8 +54,8 @@ for i in range(0,NUM_NPU_ARRAYS):
     hw_config_names[i] = hw_config_names[i][:-4]
 
 # Workloads
-# wildcard_path = factors_dir + "/Workloads/*.csv"
-wildcard_path = factors_dir + "/Workloads/Workload_Small.csv" # DEBUG
+wildcard_path = factors_dir + "/Workloads/*.csv"
+# wildcard_path = factors_dir + "/Workloads/Workload_Small.csv" # DEBUG
 paths = glob.glob(wildcard_path)
 NUM_WORKLOADS = len(paths)
 # Read from file
@@ -131,6 +136,9 @@ for scheduler_index, scheduler_row in schedulers_df.iterrows():
                 outdir,
                 runtime_df,
                 avg_power_df,
+                compute_Ttot=compute_Ttot,
+                compute_Etot=compute_Etot,
+                compute_E_idle=compute_E_idle,
             )
             # Latency measure: end
             time_end = time.perf_counter_ns()
@@ -143,12 +151,15 @@ for scheduler_index, scheduler_row in schedulers_df.iterrows():
             T_tot  [scheduler_index][workload_index][hw_config_index],  \
             E_tot  [scheduler_index][workload_index][hw_config_index],  \
             E_idle [scheduler_index][workload_index][hw_config_index] = \
-                energy_sim.compute_Etot(
+                energy_sim.compute_energy_model(
                             hw_config_df_list[hw_config_index],
                             workload_df[workload_index],
                             S,
                             runtime_df,
                             avg_power_df,
+                            compute_Ttot=compute_Ttot,
+                            compute_Etot=compute_Etot,
+                            compute_E_idle=compute_E_idle,
                         )
 
 # Debug
@@ -166,7 +177,7 @@ filepath = outdir + "/multi_npu_data.csv"
 # Open file
 with open(filepath, "w") as fd:
     # Write header
-    fd.write("Scheduler;Workload;DPUarray;Scheduler runtime(ns);Ttot(s);Etot(mJ);E_idle(mJ)\n")
+    fd.write("Scheduler;Workload;DPUarray;Scheduler_runtime(ns);Ttot(s);Etot(mJ);E_idle(mJ)\n")
 
     # For factor combinations
     for scheduler_index, scheduler_row in schedulers_df.iterrows():
@@ -175,7 +186,7 @@ with open(filepath, "w") as fd:
                 # for npu_index, npu_row in hw_config_df_list[hw_config_index].iterrows():
                 # Prepare line
                             # str(npu_row.values[0]) + ";" + \
-                concat_line = scheduler_row["Symbol"] + ";" + \
+                concat_line = scheduler_row["Name"] + ";" + \
                             workload_names[workload_index] + ";" + \
                             hw_config_names[hw_config_index] + ";" + \
                             str(sched_runtime[scheduler_index][workload_index][hw_config_index]) + ";" + \

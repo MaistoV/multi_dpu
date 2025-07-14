@@ -28,6 +28,9 @@ def thread_allocation_E (
                             S,
                             runtime_df,     # t(a,m)
                             avg_power_df,   # p(a,m)
+                            compute_Ttot: bool,
+                            compute_Etot: bool,
+                            compute_E_idle: bool,
                         ):
 
     # Pre-allocate output arrays
@@ -94,7 +97,7 @@ def thread_allocation_E (
                 [print(*line) for line in legal_schedules[schedule_index]]
                 exit(1)
             # Print
-            utils.print_debug(f"{schedule_index}:")
+            utils.print_info(f"legal_schedules[{schedule_index}]:")
             [print(*line) for line in legal_schedules[schedule_index]]
 
     # For each possible schedule
@@ -105,12 +108,15 @@ def thread_allocation_E (
         T_tot  [schedule_index] ,  \
         E_tot  [schedule_index] ,  \
         E_idle [schedule_index]  = \
-            energy_sim.energy_sim.compute_Etot(
+            energy_sim.energy_sim.compute_energy_model(
                         hw_config_df,   # D array
                         workload_df,    # W array (up to this thread)
                         legal_schedules[schedule_index], # Allocation matrix (running copy)
                         runtime_df,     # t(a,m)
                         avg_power_df,   # p(a,m)
+                        compute_Ttot=compute_Ttot,
+                        compute_Etot=compute_Etot,
+                        compute_E_idle=compute_E_idle,
                     )
 
         # Compute argmin

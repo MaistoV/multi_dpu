@@ -8,10 +8,13 @@ from energy_sim import utils
 def thread_allocation_G (
                             hw_config_df,
                             workload_df,
-                            S,
+                            S: list[list[int]],
                             runtime_df,
                             avg_power_df,
                             outdir,
+                            compute_Ttot: bool,
+                            compute_Etot: bool,
+                            compute_E_idle: bool,
                         ):
     # s_{d,t} = 1, \ \textrm{where} \
     #     d = \underset{d \in D}{argmin} (E_{tot}(S'))
@@ -50,12 +53,15 @@ def thread_allocation_G (
             T_tot  [d_index] ,  \
             E_tot  [d_index] ,  \
             E_idle [d_index]  = \
-                energy_sim.energy_sim.compute_Etot(
+                energy_sim.energy_sim.compute_energy_model(
                             hw_config_df,   # D array
                             workload_df[0 : thread_index+1],    # W array (up to this thread)
                             S_,             # Allocation matrix (running copy)
                             runtime_df,     # t(a,m)
                             avg_power_df,   # p(a,m)
+                            compute_Ttot=compute_Ttot,
+                            compute_Etot=compute_Etot,
+                            compute_E_idle=compute_E_idle,
                         )
 
             # minEnergy = True

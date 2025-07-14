@@ -162,7 +162,7 @@ def is_multinpu_placeable(multiNPU_config_df):
             # Check if it fits
             if consumption > zcu102_resources_df[res].values:
                 print_debug(
-                        "ARCH " + "{:4}".format(row["ARCH"]) + ":",
+                        "ARCH " + "{:4}".format(row["ARCH"]) + ":" +
                         res + " consumption", str(consumption) +
                         "/" + str(zcu102_resources_df[res].values[0]) +
                         " ({:2.3f}".format(percentage) + "%)"
