@@ -4,6 +4,12 @@
 import pandas
 
 # Based on linear regression model from TECS
+# ISSUE: this model should only apply for a uniform workload,
+#       I.e., for very heterogeneous workloads ( e.g. DenseNet+MobileNet ) it results that
+#       allocating both DNNs on the same NPU saves time, because:
+#       * t[DenseNet] >> t[MobileNet]
+#       * k[2] < 1
+#       * hence: (t[DenseNet] + t[MobileNet]) * k[2] < t[DenseNet])
 b0 = 0.231800862 # Intercept
 b1 = 0.717562696 # Num threads
 MAX_THREADS = 128
