@@ -124,83 +124,85 @@ if not pathlib.Path(filepath).is_file():
 # Total number of runs
 tot_runs = NUM_SCHEDULERS * NUM_NPU_ARRAYS * NUM_WORKLOADS * NUM_REPS
 this_run = 0
-# Loop over schedulers
-for scheduler_index, scheduler_row in schedulers_df.iterrows():
-    # utils.print_info(f"Scheduler: {scheduler_row.Name}")
+# For repetitions
+for rep in range(0,NUM_REPS):
+    # Loop over schedulers
+    for scheduler_index, scheduler_row in schedulers_df.iterrows():
+        # utils.print_info(f"Scheduler: {scheduler_row.Name}")
 
-    # Loop over hardware hw_configs
-    for hw_config_index in range(0,NUM_NPU_ARRAYS):
-        # utils.print_info(f"Multi-NPU design: {hw_config_names[hw_config_index]}")
-        # print(hw_config)
+        # Loop over hardware hw_configs
+        for hw_config_index in range(0,NUM_NPU_ARRAYS):
+            # utils.print_info(f"Multi-NPU design: {hw_config_names[hw_config_index]}")
+            # print(hw_config)
 
-        # Loop over workloads
-        for workload_index in range(0,NUM_WORKLOADS):
-            this_run += 1
-            utils.print_info(f"[{this_run}/{tot_runs}]: {scheduler_row.Name} {int(scheduler_row.Batch_Size)}, {hw_config_names[hw_config_index]}, {workload_names[workload_index]}")
+            # Loop over workloads
+            for workload_index in range(0,NUM_WORKLOADS):
+                this_run += 1
+                utils.print_info(f"[{this_run}/{tot_runs}]: {scheduler_row.Name} {int(scheduler_row.Batch_Size)}, {hw_config_names[hw_config_index]}, {workload_names[workload_index]}")
 
-            # Populate allocation matrix S
-            ######################################
-            # Latency measure: start
-            time_start = time.perf_counter_ns()
-            S = thread_allocation.thread_allocation (
-                scheduler_row=scheduler_row,
-                hw_config_df=hw_config_df_list[hw_config_index],
-                workload_df=workload_df[workload_index],
-                runtime_df=runtime_df,
-                avg_power_df=avg_power_df,
-                compute_Ttot=compute_Ttot,
-                compute_Etot=compute_Etot,
-                compute_E_idle=compute_E_idle,
-            )
-            # Latency measure: end
-            time_end = time.perf_counter_ns()
-            sched_runtime[scheduler_index][workload_index][hw_config_index] = time_end - time_start
-            # Store scheduler runtime
+                # Populate allocation matrix S
+                ######################################
+                # Latency measure: start
+                time_start = time.perf_counter_ns()
+                S = thread_allocation.thread_allocation (
+                    scheduler_row=scheduler_row,
+                    hw_config_df=hw_config_df_list[hw_config_index],
+                    workload_df=workload_df[workload_index],
+                    runtime_df=runtime_df,
+                    avg_power_df=avg_power_df,
+                    compute_Ttot=compute_Ttot,
+                    compute_Etot=compute_Etot,
+                    compute_E_idle=compute_E_idle,
+                )
+                # Latency measure: end
+                time_end = time.perf_counter_ns()
+                sched_runtime[scheduler_index][workload_index][hw_config_index] = time_end - time_start
+                # Store scheduler runtime
 
-            ######################################
+                ######################################
 
-            # Call to simulation
-            T_tot  [scheduler_index][workload_index][hw_config_index],  \
-            E_tot  [scheduler_index][workload_index][hw_config_index],  \
-            E_idle [scheduler_index][workload_index][hw_config_index] = \
-                energy_sim.compute_energy_model(
-                            hw_config_df_list[hw_config_index],
-                            workload_df[workload_index],
-                            S,
-                            runtime_df,
-                            avg_power_df,
-                            compute_Ttot=compute_Ttot,
-                            compute_Etot=compute_Etot,
-                            compute_E_idle=compute_E_idle,
-                        )
+                # Call to simulation
+                T_tot  [scheduler_index][workload_index][hw_config_index],  \
+                E_tot  [scheduler_index][workload_index][hw_config_index],  \
+                E_idle [scheduler_index][workload_index][hw_config_index] = \
+                    energy_sim.compute_energy_model(
+                                hw_config_df_list[hw_config_index],
+                                workload_df[workload_index],
+                                S,
+                                runtime_df,
+                                avg_power_df,
+                                compute_Ttot=compute_Ttot,
+                                compute_Etot=compute_Etot,
+                                compute_E_idle=compute_E_idle,
+                            )
 
 
-            ################
-            # Save to file #
-            ################
+                ################
+                # Save to file #
+                ################
 
-            # Unpack to floats
-            T_tot_local  = float(T_tot  [scheduler_index][workload_index][hw_config_index])
-            E_tot_local  = float(E_tot  [scheduler_index][workload_index][hw_config_index])
-            E_idle_local = float(E_idle [scheduler_index][workload_index][hw_config_index])
+                # Unpack to floats
+                T_tot_local  = float(T_tot  [scheduler_index][workload_index][hw_config_index])
+                E_tot_local  = float(E_tot  [scheduler_index][workload_index][hw_config_index])
+                E_idle_local = float(E_idle [scheduler_index][workload_index][hw_config_index])
 
-            # Open file
-            with open(filepath, "a") as fd:
-                # Prepare line with factor combinations
-                scheduler_name = scheduler_row["Name"]
-                if scheduler_row["Name"] == "Batched-Exhaustive":
-                    # Append batch size
-                    scheduler_name += "-" + str(int(scheduler_row["Batch_Size"]))
-                concat_line = scheduler_name + ";" + \
-                            workload_names[workload_index] + ";" + \
-                            hw_config_names[hw_config_index] + ";" + \
-                            str(sched_runtime[scheduler_index][workload_index][hw_config_index]) + ";" + \
-                            str(T_tot [scheduler_index][workload_index][hw_config_index]) + ";" + \
-                            str(E_tot [scheduler_index][workload_index][hw_config_index]) + ";" + \
-                            str(E_idle[scheduler_index][workload_index][hw_config_index]) + "\n"
+                # Open file
+                with open(filepath, "a") as fd:
+                    # Prepare line with factor combinations
+                    scheduler_name = scheduler_row["Name"]
+                    if scheduler_row["Name"] == "Batched-Exhaustive":
+                        # Append batch size
+                        scheduler_name += "-" + str(int(scheduler_row["Batch_Size"]))
+                    concat_line = scheduler_name + ";" + \
+                                workload_names[workload_index] + ";" + \
+                                hw_config_names[hw_config_index] + ";" + \
+                                str(sched_runtime[scheduler_index][workload_index][hw_config_index]) + ";" + \
+                                str(T_tot [scheduler_index][workload_index][hw_config_index]) + ";" + \
+                                str(E_tot [scheduler_index][workload_index][hw_config_index]) + ";" + \
+                                str(E_idle[scheduler_index][workload_index][hw_config_index]) + "\n"
 
-                # Write to file
-                fd.write(concat_line)
+                    # Write to file
+                    fd.write(concat_line)
 
 # Print
 utils.print_info("Data available at " + filepath)
