@@ -33,13 +33,13 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 # Select response variable
 optimize_by_list = [
         "Ttot",
-        # "Etot",
-        # "Eidle",
+        "Etot",
+        "Eidle",
     ]
 NUM_OPT_TARGETS = len(optimize_by_list)
 
 # Number of repetitions
-NUM_REPS=3
+NUM_REPS=1
 
 factors_dir = "energy_model/experiment/"
 
