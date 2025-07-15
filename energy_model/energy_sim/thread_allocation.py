@@ -8,7 +8,7 @@ from schedulers import round_robin
 from schedulers import greedy
 from schedulers import exhaustive
 from schedulers import batched_exhaustive
-
+from schedulers import random
 
 # Wrapper function
 def thread_allocation (
@@ -57,6 +57,12 @@ def thread_allocation (
             )
         case "Round-Robin":
             round_robin.thread_allocation_RR(
+                hw_config_df=hw_config_df,
+                workload_df=workload_df,
+                S=S,
+            )
+        case "Random":
+            random.thread_allocation_R(
                 hw_config_df=hw_config_df,
                 workload_df=workload_df,
                 S=S,
