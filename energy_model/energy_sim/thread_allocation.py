@@ -17,9 +17,7 @@ def thread_allocation (
             workload_df,
             runtime_df,
             avg_power_df,
-            compute_Ttot : bool,
-            compute_Etot : bool,
-            compute_E_idle : bool,
+            opt_target: str,
         ):
 
     # Pre-allocate allocation matrix
@@ -29,6 +27,21 @@ def thread_allocation (
     # Reshuffle for randomness
     # NOTE: this is useless for "Exhaustive-search"
     workload_df = workload_df.sample(frac=1).reset_index(drop=True)
+
+
+    # Select optimization taget
+    compute_Ttot=False
+    compute_Etot=False
+    compute_E_idle=False
+    match opt_target:
+        case "Ttot":
+            compute_Ttot=True
+        case "Etot":
+            compute_Etot=True
+        case "Eidle":
+            compute_E_idle=True
+        case _:
+            utils.print_error("Unsupported optimization target " + opt_target)
 
     # Launch selected scheduler
     match scheduler_row["Name"]:

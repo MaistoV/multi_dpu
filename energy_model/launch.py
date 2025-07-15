@@ -31,9 +31,14 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 # Load experimental factors #
 #############################
 # Select response variable
-compute_Ttot=True
-compute_Etot=True
-compute_E_idle=True
+optimize_by_list = [
+        "Ttot",
+        # "Etot",
+        # "Eidle",
+    ]
+NUM_OPT_TARGETS = len(optimize_by_list)
+
+# Number of repetitions
 NUM_REPS=3
 
 factors_dir = "energy_model/experiment/"
@@ -111,99 +116,100 @@ sched_runtime = [[[0. for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOA
 # E_d = [[[[0. for _ in range(MAX_NPUS)]
 #                  for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS)]
 
-
-filepath = outdir + "/multi_npu_data.csv"
-
-# Check if file exists
-if not pathlib.Path(filepath).is_file():
-    # Overwrite header to file
-    with open(filepath, "w") as fd:
-        # Write header
-        fd.write("Scheduler;Workload;NPUarray;Scheduler_runtime(ns);Ttot(s);Etot(mJ);Etot_idle(mJ)\n")
-
 # Total number of runs
-tot_runs = NUM_SCHEDULERS * NUM_NPU_ARRAYS * NUM_WORKLOADS * NUM_REPS
+tot_runs = NUM_SCHEDULERS * NUM_NPU_ARRAYS * NUM_WORKLOADS * NUM_REPS * NUM_OPT_TARGETS
 this_run = 0
 experiment_start = time.perf_counter_ns()
-# For repetitions
-for rep in range(1,NUM_REPS+1):
-    # Loop over schedulers
-    for scheduler_index, scheduler_row in schedulers_df.iterrows():
-        # utils.print_info(f"Scheduler: {scheduler_row.Name}")
 
-        # Loop over hardware hw_configs
-        for hw_config_index in range(0,NUM_NPU_ARRAYS):
-            # utils.print_info(f"Multi-NPU design: {hw_config_names[hw_config_index]}")
-            # print(hw_config)
+# For optimization targets
+for opt_target in optimize_by_list:
+    # For repetitions
+    for rep in range(1,NUM_REPS+1):
+        # Loop over schedulers
+        for scheduler_index, scheduler_row in schedulers_df.iterrows():
+            # utils.print_info(f"Scheduler: {scheduler_row.Name}")
 
-            # Loop over workloads
-            for workload_index in range(0,NUM_WORKLOADS):
-                this_run += 1
-                utils.print_info(f"[{this_run}/{tot_runs}]: rep {rep}, {scheduler_row.Name} {int(scheduler_row.Batch_Size)}, {hw_config_names[hw_config_index]}, {workload_names[workload_index]}")
+            # Loop over hardware hw_configs
+            for hw_config_index in range(0,NUM_NPU_ARRAYS):
+                # utils.print_info(f"Multi-NPU design: {hw_config_names[hw_config_index]}")
+                # print(hw_config)
 
-                # Populate allocation matrix S
-                ######################################
-                # Latency measure: start
-                time_start = time.perf_counter_ns()
-                S = thread_allocation.thread_allocation (
-                    scheduler_row=scheduler_row,
-                    hw_config_df=hw_config_df_list[hw_config_index],
-                    workload_df=workload_df[workload_index],
-                    runtime_df=runtime_df,
-                    avg_power_df=avg_power_df,
-                    compute_Ttot=compute_Ttot,
-                    compute_Etot=compute_Etot,
-                    compute_E_idle=compute_E_idle,
-                )
-                # Latency measure: end
-                time_end = time.perf_counter_ns()
-                sched_runtime[scheduler_index][workload_index][hw_config_index] = time_end - time_start
-                # Store scheduler runtime
+                # Loop over workloads
+                for workload_index in range(0,NUM_WORKLOADS):
+                    this_run += 1
+                    utils.print_info(f"[{this_run}/{tot_runs}]: target {opt_target}, rep {rep}, {scheduler_row.Name} {int(scheduler_row.Batch_Size)}, {hw_config_names[hw_config_index]}, {workload_names[workload_index]}")
 
-                ######################################
+                    # Populate allocation matrix S
+                    ######################################
+                    # Latency measure: start
+                    time_start = time.perf_counter_ns()
+                    S = thread_allocation.thread_allocation (
+                        scheduler_row=scheduler_row,
+                        hw_config_df=hw_config_df_list[hw_config_index],
+                        workload_df=workload_df[workload_index],
+                        runtime_df=runtime_df,
+                        avg_power_df=avg_power_df,
+                        opt_target=opt_target
+                    )
+                    # Latency measure: end
+                    time_end = time.perf_counter_ns()
+                    sched_runtime[scheduler_index][workload_index][hw_config_index] = time_end - time_start
+                    # Store scheduler runtime
 
-                # Call to simulation
-                T_tot  [scheduler_index][workload_index][hw_config_index],  \
-                E_tot  [scheduler_index][workload_index][hw_config_index],  \
-                E_idle [scheduler_index][workload_index][hw_config_index] = \
-                    energy_sim.compute_energy_model(
-                                hw_config_df_list[hw_config_index],
-                                workload_df[workload_index],
-                                S,
-                                runtime_df,
-                                avg_power_df,
-                                compute_Ttot=compute_Ttot,
-                                compute_Etot=compute_Etot,
-                                compute_E_idle=compute_E_idle,
-                            )
+                    ######################################
+
+                    # Call to simulation
+                    T_tot  [scheduler_index][workload_index][hw_config_index],  \
+                    E_tot  [scheduler_index][workload_index][hw_config_index],  \
+                    E_idle [scheduler_index][workload_index][hw_config_index] = \
+                        energy_sim.compute_energy_model(
+                                    hw_config_df_list[hw_config_index],
+                                    workload_df[workload_index],
+                                    S,
+                                    runtime_df,
+                                    avg_power_df,
+                                    compute_Ttot=True,
+                                    compute_Etot=True,
+                                    compute_E_idle=True,
+                                )
 
 
-                ################
-                # Save to file #
-                ################
+                    ################
+                    # Save to file #
+                    ################
 
-                # Unpack to floats
-                T_tot_local  = float(T_tot  [scheduler_index][workload_index][hw_config_index])
-                E_tot_local  = float(E_tot  [scheduler_index][workload_index][hw_config_index])
-                E_idle_local = float(E_idle [scheduler_index][workload_index][hw_config_index])
+                    # Unpack to floats
+                    T_tot_local  = float(T_tot  [scheduler_index][workload_index][hw_config_index])
+                    E_tot_local  = float(E_tot  [scheduler_index][workload_index][hw_config_index])
+                    E_idle_local = float(E_idle [scheduler_index][workload_index][hw_config_index])
 
-                # Open file
-                with open(filepath, "a") as fd:
-                    # Prepare line with factor combinations
-                    scheduler_name = scheduler_row["Name"]
-                    if scheduler_row["Name"] == "Batched":
-                        # Append batch size
-                        scheduler_name += "-" + str(int(scheduler_row["Batch_Size"]))
-                    concat_line = scheduler_name + ";" + \
-                                workload_names[workload_index] + ";" + \
-                                hw_config_names[hw_config_index] + ";" + \
-                                str(sched_runtime[scheduler_index][workload_index][hw_config_index]) + ";" + \
-                                str(T_tot [scheduler_index][workload_index][hw_config_index]) + ";" + \
-                                str(E_tot [scheduler_index][workload_index][hw_config_index]) + ";" + \
-                                str(E_idle[scheduler_index][workload_index][hw_config_index]) + "\n"
+                    # Target file
+                    filepath = outdir + "multi_npu_data.by" + opt_target +  ".csv"
 
-                    # Write to file
-                    fd.write(concat_line)
+                    # Check if file exists
+                    if not pathlib.Path(filepath).is_file():
+                        # Overwrite header to file
+                        with open(filepath, "w") as fd:
+                            # Write header
+                            fd.write("Scheduler;Workload;NPUarray;Scheduler_runtime(ns);Ttot(s);Etot(mJ);Etot_idle(mJ)\n")
+
+                    # Append on file
+                    with open(filepath, "a") as fd:
+                        # Prepare line with factor combinations
+                        scheduler_name = scheduler_row["Name"]
+                        if scheduler_row["Name"] == "Batched":
+                            # Append batch size
+                            scheduler_name += "-" + str(int(scheduler_row["Batch_Size"]))
+                        concat_line = scheduler_name + ";" + \
+                                    workload_names[workload_index] + ";" + \
+                                    hw_config_names[hw_config_index] + ";" + \
+                                    str(sched_runtime[scheduler_index][workload_index][hw_config_index]) + ";" + \
+                                    str(T_tot [scheduler_index][workload_index][hw_config_index]) + ";" + \
+                                    str(E_tot [scheduler_index][workload_index][hw_config_index]) + ";" + \
+                                    str(E_idle[scheduler_index][workload_index][hw_config_index]) + "\n"
+
+                        # Write to file
+                        fd.write(concat_line)
 
 # End time
 experiment_end = time.perf_counter_ns()
