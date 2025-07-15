@@ -43,7 +43,7 @@ def thread_allocation (
                 compute_Etot=compute_Etot,
                 compute_E_idle=compute_E_idle,
             )
-        case "Batched-Exhaustive":
+        case "Batched":
             batched_exhaustive.thread_allocation_BE(
                 hw_config_df=hw_config_df,
                 workload_df=workload_df,

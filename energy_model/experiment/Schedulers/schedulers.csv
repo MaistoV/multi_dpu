@@ -1,8 +1,4 @@
 Name,Symbol,Batch_Size
-Random,$\P_{R}$,0
-Round-Robin,$\P_{RR}$,0
-Greedy,$\P_{G}$,0
-Batched-Exhaustive,$\P_{EB}$,1
-Batched-Exhaustive,$\P_{EB}$,2
-Batched-Exhaustive,$\P_{EB}$,3
-Batched-Exhaustive,$\P_{EB}$,4
+Batched,$\P_{EB}$,1
+Batched,$\P_{EB}$,2
+Batched,$\P_{EB}$,4

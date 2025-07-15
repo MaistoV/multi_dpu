@@ -1,5 +1,5 @@
 # Description:
-#   Batched-Exhaustive, locally optimal scheduler.
+#   Batched, locally optimal scheduler.
 
 import math
 from energy_sim import utils

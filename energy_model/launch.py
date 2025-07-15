@@ -34,7 +34,7 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 compute_Ttot=True
 compute_Etot=True
 compute_E_idle=True
-NUM_REPS=1
+NUM_REPS=3
 
 factors_dir = "energy_model/experiment/"
 
@@ -124,8 +124,9 @@ if not pathlib.Path(filepath).is_file():
 # Total number of runs
 tot_runs = NUM_SCHEDULERS * NUM_NPU_ARRAYS * NUM_WORKLOADS * NUM_REPS
 this_run = 0
+experiment_start = time.perf_counter_ns()
 # For repetitions
-for rep in range(0,NUM_REPS):
+for rep in range(1,NUM_REPS+1):
     # Loop over schedulers
     for scheduler_index, scheduler_row in schedulers_df.iterrows():
         # utils.print_info(f"Scheduler: {scheduler_row.Name}")
@@ -138,7 +139,7 @@ for rep in range(0,NUM_REPS):
             # Loop over workloads
             for workload_index in range(0,NUM_WORKLOADS):
                 this_run += 1
-                utils.print_info(f"[{this_run}/{tot_runs}]: {scheduler_row.Name} {int(scheduler_row.Batch_Size)}, {hw_config_names[hw_config_index]}, {workload_names[workload_index]}")
+                utils.print_info(f"[{this_run}/{tot_runs}]: rep {rep}, {scheduler_row.Name} {int(scheduler_row.Batch_Size)}, {hw_config_names[hw_config_index]}, {workload_names[workload_index]}")
 
                 # Populate allocation matrix S
                 ######################################
@@ -190,7 +191,7 @@ for rep in range(0,NUM_REPS):
                 with open(filepath, "a") as fd:
                     # Prepare line with factor combinations
                     scheduler_name = scheduler_row["Name"]
-                    if scheduler_row["Name"] == "Batched-Exhaustive":
+                    if scheduler_row["Name"] == "Batched":
                         # Append batch size
                         scheduler_name += "-" + str(int(scheduler_row["Batch_Size"]))
                     concat_line = scheduler_name + ";" + \
@@ -204,8 +205,14 @@ for rep in range(0,NUM_REPS):
                     # Write to file
                     fd.write(concat_line)
 
+# End time
+experiment_end = time.perf_counter_ns()
+utils.print_info(f"Total runtime {(experiment_end - experiment_start) / 1e9} seconds")
+
 # Print
 utils.print_info("Data available at " + filepath)
+
+
 
 # #################################
 # # Single, batched write to file #
