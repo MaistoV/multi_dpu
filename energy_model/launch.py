@@ -39,7 +39,7 @@ optimize_by_list = [
 NUM_OPT_TARGETS = len(optimize_by_list)
 
 # Number of repetitions
-NUM_REPS=1
+NUM_REPS=10
 
 factors_dir = "energy_model/experiment/"
 
@@ -142,6 +142,7 @@ for opt_target in optimize_by_list:
                     # Populate allocation matrix S
                     ######################################
                     # Latency measure: start
+                    # Get time
                     time_start = time.perf_counter_ns()
                     S = thread_allocation.thread_allocation (
                         scheduler_row=scheduler_row,
@@ -151,11 +152,11 @@ for opt_target in optimize_by_list:
                         avg_power_df=avg_power_df,
                         opt_target=opt_target
                     )
-                    # Latency measure: end
+                    # Get time
                     time_end = time.perf_counter_ns()
+                    # Save scheduler runtime
                     sched_runtime[scheduler_index][workload_index][hw_config_index] = time_end - time_start
-                    # Store scheduler runtime
-
+                    # Latency measure: end
                     ######################################
 
                     # Call to simulation
