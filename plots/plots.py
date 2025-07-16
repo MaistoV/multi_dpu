@@ -27,28 +27,103 @@ os.makedirs(figures_dir, exist_ok=True)
 ##################
 
 # Target figures
-figures = [
-            "Scheduler_runtime(ns)",
-            # "Ttot(s)",
-            # "Etot(mJ)",
-            # "Etot_idle(mJ)",
+data_settings_dict = [
+            {
+                "Data"     : "Scheduler_runtime(ns)",
+                "Label"    : "Scheduler runtime (ns)",
+                "Palette"  : "mako",
+                # Y-axis scale
+                "yscale" : "log",
+                # Filter schedulers
+                "schedulers_sort" : [
+                    "Random",
+                    "Round-Robin",
+                    "Batched-1",
+                    "Batched-2",
+                    "Batched-3", # These are exponentially slower
+                    "Batched-4", # These are exponentially slower
+                    "Greedy",
+                ],
+                # Workloads by size
+                "workload_sort" : [
+                    "Workload_Small",
+                    "Workload_Medium",
+                    "Workload_Large",
+                ],
+            },
+            {
+                "Data"   : "Ttot(s)",
+                "Label"    : "$T_{tot}$ (s)",
+                "Palette"  : "magma",
+                # Y-axis scale
+                "yscale" : "log",
+                # Filter schedulers
+                "schedulers_sort" : [
+                    "Random",
+                    "Round-Robin",
+                    "Batched-1",
+                    "Batched-2",
+                    "Batched-3", # These are exponentially slower
+                    "Batched-4", # These are exponentially slower
+                    "Greedy",
+                ],
+                # Workloads by type
+                "workload_sort" : [
+                    "Workload_Uniform",
+                    "Workload_Low-energy skew",
+                    "Workload_Mid-energy skew",
+                    "Workload_High-energy skew",
+                ]
+            },
+            {
+                "Data"   : "Etot(mJ)",
+                "Label"    : "$E_{tot}$ (mJ)",
+                "Palette"  : "magma",
+                # Y-axis scale
+                "yscale" : "log",
+                # Filter schedulers
+                "schedulers_sort" : [
+                    "Random",
+                    "Round-Robin",
+                    "Batched-1",
+                    "Batched-2",
+                    "Batched-3", # These are exponentially slower
+                    "Batched-4", # These are exponentially slower
+                    "Greedy",
+                ],
+                # Workloads by type
+                "workload_sort" : [
+                    "Workload_Uniform",
+                    "Workload_Low-energy skew",
+                    "Workload_Mid-energy skew",
+                    "Workload_High-energy skew",
+                ]
+            },
+            {
+                "Data"     : "Etot_idle(mJ)",
+                "Label"    : "$Eidle{tot}$ (mJ)",
+                "Palette"  : "magma",
+                # Y-axis scale
+                "yscale" : "log",
+                # Filter schedulers
+                "schedulers_sort" : [
+                    "Random",
+                    "Round-Robin",
+                    "Batched-1",
+                    "Batched-2",
+                    "Batched-3", # These are exponentially slower
+                    "Batched-4", # These are exponentially slower
+                    "Greedy",
+                ],
+                # Workloads by type
+                "workload_sort" : [
+                    "Workload_Uniform",
+                    "Workload_Low-energy skew",
+                    "Workload_Mid-energy skew",
+                    "Workload_High-energy skew",
+                ]
+            },
         ]
-
-# Labels
-target_data_labels = [
-            "Scheduler runtime (ns)",
-            "$T_{tot}$ (s)",
-            "$E_{tot}$ (mJ)",
-            "$Eidle{tot}$ (mJ)",
-    ]
-
-# Palettes
-target_palette = [
-    "mako",
-    "magma",
-    "magma",
-    "magma",
-]
 
 # Sort NPU array by level of heterogeneity
 npu_array_sort = [
@@ -71,7 +146,7 @@ npu_array_sort = [
 optimize_by_list = [
         "Ttot",
         "Etot",
-        # "Eidle",
+        "Eidle",
 ]
 
 # For optimization targets
@@ -103,96 +178,10 @@ for opt_target in optimize_by_list:
     ###########
 
     # For each figure to plot
-    target_index = 0
-    for target_data in figures:
+    for data_settings in data_settings_dict:
 
-        #############################
-        # Per-figure data selection #
-        #############################
+        print("[INFO] Plotting " + data_settings["Label"])
 
-        # Default #
-        # Y-axis scale
-        yscale = "lin"
-        # Sort schedulers
-        schedulers_sort = [
-            "Random",
-            "Round-Robin",
-            "Batched-1",
-            "Batched-2",
-            "Batched-3", # These are exponentially slower
-            "Batched-4", # These are exponentially slower
-            "Greedy",
-        ]
-        # Sort workloads, by skew
-        workload_sort = [
-            # "Workload_Small",
-            # "Workload_Medium",
-            # "Workload_Large",
-            # "Workload_MobileNet",
-            # "Workload_VGG",
-            # "Workload_ResNet",
-            # "Workload_DenseNet",
-            "Workload_Uniform",
-            "Workload_Low-energy skew",
-            "Workload_Mid-energy skew",
-            "Workload_High-energy skew",
-        ]
-
-        # Adjust
-        match target_data:
-            case "Scheduler_runtime(ns)":
-                # Y-axis scale
-                yscale = "log"
-                # Filter schedulers
-                schedulers_sort = [
-                    "Random",
-                    "Round-Robin",
-                    "Batched-1",
-                    "Batched-2",
-                    "Batched-3", # These are exponentially slower
-                    "Batched-4", # These are exponentially slower
-                    "Greedy",
-                ]
-                # Workloads by size
-                workload_sort = [
-                    "Workload_Small",
-                    "Workload_Medium",
-                    "Workload_Large",
-                ]
-            case "Ttot(s)":
-                # Y-axis scale
-                yscale = "log"
-                # Workloads by type
-                workload_sort = [
-                    "Workload_Uniform",
-                    "Workload_Low-energy skew",
-                    "Workload_Mid-energy skew",
-                    "Workload_High-energy skew",
-                ]
-            case "Etot(mJ)":
-                # Y-axis scale
-                yscale = "log"
-                # Workloads by type
-                workload_sort = [
-                    "Workload_Uniform",
-                    "Workload_Low-energy skew",
-                    "Workload_Mid-energy skew",
-                    "Workload_High-energy skew",
-                ]
-            case "Etot_idle(mJ)":
-                # Y-axis scale
-                yscale = "log"
-                # Workloads by type
-                workload_sort = [
-                    "Workload_Uniform",
-                    "Workload_Low-energy skew",
-                    "Workload_Mid-energy skew",
-                    "Workload_High-energy skew",
-                ]
-            case _:
-                # Error
-                print("[ERROR] Unsupported optimization target " + target_data)
-                exit(1)
 
         ########################
         # Sort and filter data #
@@ -202,18 +191,18 @@ for opt_target in optimize_by_list:
         # Sort by Scheduler
         schedules_df_local['Scheduler'] = pandas.Categorical(
                                     schedules_df_local['Scheduler'],
-                                    categories=schedulers_sort,
+                                    categories=data_settings["schedulers_sort"],
                                     ordered=True
                                 )
         schedules_df_local = schedules_df_local.sort_values('Scheduler')
 
         # Sort by Workload #
         # Need to Filter for NaNs
-        schedules_df_local = schedules_df_local.loc[schedules_df_local['Workload'].isin(workload_sort)]
+        schedules_df_local = schedules_df_local.loc[schedules_df_local['Workload'].isin(data_settings["workload_sort"])]
         # Actaul sort
         schedules_df_local['Workload'] = pandas.Categorical(
                                     schedules_df_local['Workload'],
-                                    categories=workload_sort,
+                                    categories=data_settings["workload_sort"],
                                     ordered=True
                                 )
         schedules_df_local = schedules_df_local.sort_values('Workload')
@@ -221,13 +210,14 @@ for opt_target in optimize_by_list:
         ##############
         # New figure #
         ##############
-        plt.figure(target_data, figsize=[30,15])
+        plt.figure(data_settings["Data"], figsize=[30,15])
 
         # Subplot setup
         num_rows = len(schedules_df_local["Workload"].unique())
         num_cols = 1
         ax = plt.subplot(num_rows, num_cols, 1)
-        ax.tick_params(axis='x', which='both', bottom=False, top=False)  # removes tick marks
+        # Remove tick marks
+        ax.tick_params(axis='x', which='both', bottom=False, top=False)
         ax.set_xticks([])  # removes x-axis tick labels
         # ax.get_xaxis().set_visible(False)
 
@@ -245,27 +235,33 @@ for opt_target in optimize_by_list:
             ax = sns.barplot(
                 data=plot_data,
                 x='NPUarray',
-                y=target_data,
+                y=data_settings["Data"],
                 hue='Scheduler',
-                # labels=scheduler_names
+                # legend=,
                 # errorbar=None,
-                palette=target_palette[target_index]
+                palette=data_settings["Palette"]
                 # color=["r", "g", "b"]
             )
+
+            # Overlay a stripplot without the legend
+            sns.stripplot(x="NPUarray", y=data_settings["Data"], data=plot_data, hue="Scheduler",
+                        dodge=True,
+                        legend=False)
 
             ############
             # Decorate #
             ############
             # Legend
             plt.legend (
-                    ncols=len(schedulers_sort),
+                    # schedulers_sort,
+                    ncols=len(data_settings["schedulers_sort"]),
                     loc="upper left"
                 )
             if subplot_count != 1:
                 ax.get_legend().remove()
 
             plt.grid(axis="y", which="both")
-            ax.set_yscale(yscale) #, base=10)
+            ax.set_yscale(data_settings["yscale"]) #, base=10)
             # Title
             plt.title("W[" + workload[9:] + "]")
             # Labels
@@ -285,17 +281,20 @@ for opt_target in optimize_by_list:
 
             # Y-axis
             if ((subplot_count-1) % num_cols) == 0:
-                plt.ylabel(target_data_labels[target_index])
+                plt.ylabel(data_settings["Label"])
             else:
                 plt.ylabel("")
 
-        target_index += 1
-
         # Save figure
-        figname = figures_dir + target_data + ".by" + opt_target + ".png"
+        figname = figures_dir + data_settings["Data"] + ".by" + opt_target + ".png"
+        figname = re.sub(r'\([^)]*\)', '', figname)  # remove parentheses
         plt.savefig(figname, dpi=400, bbox_inches="tight")
         print("[INFO] Plot available at " + figname)
 
+        # Clean up
+        plt.clf()
+
+        # Debug
         # exit()
 
     # Increment counter
