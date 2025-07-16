@@ -1,4 +1,4 @@
-Name,Symbol,Batch_Size
+Name,Batch_Size
 Random,$\P_{R}$,0
 Round-Robin,$\P_{RR}$,0
 Greedy,$\P_{G}$,0

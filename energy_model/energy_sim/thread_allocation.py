@@ -39,6 +39,8 @@ def thread_allocation (
         case "Etot":
             compute_Etot=True
         case "Eidle":
+            # Also requires T_tot for T_idle
+            compute_Ttot=True
             compute_E_idle=True
         case _:
             utils.print_error("Unsupported optimization target " + opt_target)

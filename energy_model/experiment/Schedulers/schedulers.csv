@@ -1,4 +1,8 @@
-Name,Symbol,Batch_Size
-Batched,$\P_{EB}$,1
-Batched,$\P_{EB}$,2
-Batched,$\P_{EB}$,4
+Name,Batch_Size
+Random,0
+Round-Robin,0
+Greedy,0
+Batched,1
+Batched,2
+Batched,3
+Batched,4
