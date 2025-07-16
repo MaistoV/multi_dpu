@@ -12,8 +12,9 @@ def thread_allocation_G (
                             runtime_df,
                             avg_power_df,
                             compute_Ttot: bool,
-                            compute_Etot: bool,
+                            compute_Ecompute: bool,
                             compute_E_idle: bool,
+                            opt_target: str
                         ):
     # s_{d,t} = 1, \ \textrm{where} \
     #     d = \underset{d \in D}{argmin} (E_{tot}(S'))
@@ -25,14 +26,14 @@ def thread_allocation_G (
     LEN_D = len(hw_config_df)
     # LEN_W = len(workload_df)
     T_tot  = [0. for _ in range(LEN_D)]
-    E_tot  = [0. for _ in range(LEN_D)]
+    E_comp  = [0. for _ in range(LEN_D)]
     E_idle = [0. for _ in range(LEN_D)]
 
     # One thread at the time
     for thread_index, row in workload_df.iterrows():
         # Init running minimum
         argmin_d = 0
-        best_tot = sys.maxsize
+        running_min = sys.maxsize
 
         # Prepare running copy of schedule S
         S_ = [[0 for _ in range(LEN_D)] for _ in range(thread_index+1)]
@@ -48,9 +49,9 @@ def thread_allocation_G (
             if utils.LOG_ON:
                 [print(*line) for line in S_]
 
-            # Compute runtime (T_tot) and energy (E_tot) with running schedule
+            # Compute runtime (T_tot) and energy (E_comp) with running schedule
             T_tot  [d_index] ,  \
-            E_tot  [d_index] ,  \
+            E_comp  [d_index] ,  \
             E_idle [d_index]  = \
                 energy_sim.energy_sim.compute_energy_model(
                             hw_config_df,   # D array
@@ -59,33 +60,27 @@ def thread_allocation_G (
                             runtime_df,     # t(a,m)
                             avg_power_df,   # p(a,m)
                             compute_Ttot=compute_Ttot,
-                            compute_Etot=compute_Etot,
+                            compute_Ecompute=compute_Ecompute,
                             compute_E_idle=compute_E_idle,
                         )
 
-            # minEnergy = True
-            minEnergy = False
-            # Minimize by energy
-            if minEnergy:
-                # if new running argmin
-                if E_tot[d_index] < best_tot:
-                    # Override
-                    best_tot = E_tot[d_index]
-                    argmin_d = d_index
-            # Minimize by runtime
-            else:
-                # if new running argmin
-                if T_tot[d_index] < best_tot:
-                    # Override
-                    best_tot = T_tot[d_index]
-                    argmin_d = d_index
+            # Update running min and argmin
+            running_min, argmin_d = energy_sim.thread_allocation.running_argmin_by(
+                opt_target=opt_target,
+                running_min=running_min,
+                argmin_index=argmin_d,
+                running_argmin=d_index,
+                T_tot=T_tot[d_index],
+                E_comp=E_comp[d_index],
+                E_idle=E_idle[d_index],
+            )
 
             # Deallocate
             S_[thread_index][d_index] = 0
 
         # Debug
         utils.print_log(f"[greedy] T_tot : {T_tot}")
-        utils.print_log(f"[greedy] E_tot : {E_tot}")
+        utils.print_log(f"[greedy] E_comp : {E_comp}")
         utils.print_log(f"[greedy] E_idle: {E_idle}")
 
         # Commit argmin on S

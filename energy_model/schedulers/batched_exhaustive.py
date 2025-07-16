@@ -19,8 +19,9 @@ def thread_allocation_BE (
                             runtime_df,     # t(a,m)
                             avg_power_df,   # p(a,m)
                             compute_Ttot: bool,
-                            compute_Etot: bool,
+                            compute_Ecompute: bool,
                             compute_E_idle: bool,
+                            opt_target: str,
                         ):
 
 
@@ -55,8 +56,9 @@ def thread_allocation_BE (
                 runtime_df,
                 avg_power_df,
                 compute_Ttot=compute_Ttot,
-                compute_Etot=compute_Etot,
+                compute_Ecompute=compute_Ecompute,
                 compute_E_idle=compute_E_idle,
+                opt_target=opt_target,
             )
 
         # Print

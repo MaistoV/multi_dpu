@@ -50,17 +50,10 @@ from energy_sim import utils
 #               => sum[D[:]](T[:]) = T_tot, for each (d)
 #   E[d]     : energy consumption of DPU (d)
 #               E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
-#   E_tot    : batch multi-DPU energy consumption
-#               E_tot = sum[D[:]](E[:])
-
-# TODO: refactor in two subfunctions
-# def compute_Ttot(
-#             hw_config_df,   # D array
-#             workload_df,    # W array
-#             S: list[list[int]],              # Allocation matrix
-#             runtime_df,     # t(a,m)
-#             avg_power_df,   # p(a,mo)
-#         ):
+#   E_comp    : batch multi-DPU energy consumption
+#               E_comp = sum[D[:]](E[:])
+#   E_tot_idle : batch multi-DPU idle energy consumption
+#               E_comp = sum[D[:]](t[A[d],"Idle"] * p[A[d],"Idle"])
 
 def compute_energy_model(
             hw_config_df,   # D array
@@ -69,7 +62,7 @@ def compute_energy_model(
             runtime_df,     # t(a,m)
             avg_power_df,   # p(a,mo)
             compute_Ttot: bool,
-            compute_Etot: bool,
+            compute_Ecompute: bool,
             compute_E_idle: bool,
         ):
 
@@ -77,9 +70,9 @@ def compute_energy_model(
     # Init data-structures #
     ########################
     # Init return values
-    T_tot = 0
-    E_tot = 0
-    E_idle_tot = 0
+    T_tot = 0.
+    E_comp = 0.
+    E_idle_tot = 0.
 
     # Unroll hw_config dataframe
     D = list(range(len(hw_config_df)))
@@ -130,7 +123,7 @@ def compute_energy_model(
 
     # Compute DPU runtimes
     if compute_Ttot:
-        utils.print_log(f"[compute_energy_model] Compute DPU runtimes")
+        utils.print_log(f"[compute_energy_model] Compute DPU runtimes T_tot")
         T = [0. for _ in range(LEN_D)]
         # Compute: T[d] = sum[W[d]](t[A[d],:]) * k[N[d]]
         for thread_index in range(LEN_W):
@@ -167,10 +160,11 @@ def compute_energy_model(
     ######################
     #   E[d]     : energy consumption of DPU (d)
     #               E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
-    #   E_tot    : batch multi-DPU energy consumption
-    #               E_tot = sum[D[:]](E[:])
+    #   E_comp    : batch multi-DPU energy consumption
+    #               E_comp = sum[D[:]](E[:])
 
-    if compute_Etot:
+    if compute_Ecompute:
+        utils.print_log(f"[compute_energy_model] Compute DPU energy draws E_compute")
         E = [0. for _ in range(LEN_D)]
         # Compute: E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
         for thread_index in range(LEN_W):
@@ -205,11 +199,22 @@ def compute_energy_model(
         # Print
         utils.print_log("E:" + str(E))
 
-        # Compute total E_tot = sum[D[:]](E[:])
-        E_tot = sum(E)
-        utils.print_log(f"E_tot: {E_tot}")
+        # Compute total E_comp = sum[D[:]](E[:])
+        E_comp = sum(E)
+        utils.print_log(f"E_comp: {E_comp}")
+
+
+    ###########################
+    # Idle energy consumption #
+    ###########################
+
 
     if compute_E_idle:
+        utils.print_log(f"[compute_energy_model] Compute DPU idle energy draws E_idle_tot")
+
+        # Assert T_idle has been computed
+        assert( compute_Ttot == True )
+
         # Calculate idle energy
         E_idle = [0. for _ in range(LEN_D)]
 
@@ -234,13 +239,15 @@ def compute_energy_model(
         # Wasted energy
         E_idle_tot = sum(E_idle)
         utils.print_log("E_idle_tot:" + str(E_idle_tot))
-        # Percentage
-        energy_waste =  E_idle_tot / (E_tot + E_idle_tot)
-        utils.print_log("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
+
+        if compute_E_idle:
+            # Percentage
+            energy_waste =  E_idle_tot / (E_comp + E_idle_tot)
+            utils.print_log("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
 
     # Save to file
     # TBD
 
     # Return values
-    return T_tot, E_tot, E_idle_tot
+    return T_tot, E_comp, E_idle_tot
 

@@ -31,19 +31,24 @@ def thread_allocation (
 
     # Select optimization taget
     compute_Ttot=False
-    compute_Etot=False
+    compute_Ecompute=False
     compute_E_idle=False
     match opt_target:
-        case "Ttot":
+        case "T_tot":
             compute_Ttot=True
-        case "Etot":
-            compute_Etot=True
-        case "Eidle":
+        case "E_compute":
+            compute_Ecompute=True
+        case "E_idle":
+            compute_Ttot=True
+            compute_E_idle=True
+        case "E_tot":
             # Also requires T_tot for T_idle
             compute_Ttot=True
+            compute_Ecompute=True
             compute_E_idle=True
         case _:
             utils.print_error("Unsupported optimization target " + opt_target)
+            exit(1)
 
     # Launch selected scheduler
     match scheduler_row["Name"]:
@@ -55,8 +60,9 @@ def thread_allocation (
                 runtime_df=runtime_df,
                 avg_power_df=avg_power_df,
                 compute_Ttot=compute_Ttot,
-                compute_Etot=compute_Etot,
+                compute_Ecompute=compute_Ecompute,
                 compute_E_idle=compute_E_idle,
+                opt_target=opt_target,
             )
         case "Batched":
             batched_exhaustive.thread_allocation_BE(
@@ -67,8 +73,9 @@ def thread_allocation (
                 runtime_df=runtime_df,
                 avg_power_df=avg_power_df,
                 compute_Ttot=compute_Ttot,
-                compute_Etot=compute_Etot,
+                compute_Ecompute=compute_Ecompute,
                 compute_E_idle=compute_E_idle,
+                opt_target=opt_target,
             )
         case "Round-Robin":
             round_robin.thread_allocation_RR(
@@ -90,8 +97,9 @@ def thread_allocation (
                 runtime_df=runtime_df,
                 avg_power_df=avg_power_df,
                 compute_Ttot=compute_Ttot,
-                compute_Etot=compute_Etot,
+                compute_Ecompute=compute_Ecompute,
                 compute_E_idle=compute_E_idle,
+                opt_target=opt_target,
             )
         case _:
             utils.print_error("Unsupported scheduler " + scheduler_row["Name"])
@@ -121,3 +129,56 @@ def thread_allocation (
 
     # Return schedule
     return S
+
+# Configurable minimization function
+def running_argmin_by (
+            opt_target: str,       # Optimization target
+            running_min: float,    # Runniong minimum
+            running_argmin: float, # Running argmin
+            argmin_index: float,   # Index of current evaluation
+            T_tot: float,       # This T_tot to evaluate
+            E_comp: float,      # This E_comp to evaluate
+            E_idle: float,      # This E_idle to evaluate
+        ):
+
+        # Minimization condition default
+        is_new_min = False
+
+        if utils.DEBUG_ON:
+            utils.print_debug(f"T_tot: {T_tot}")
+            utils.print_debug(f"E_compute: {E_comp}")
+            utils.print_debug(f"E_idle: {E_idle}")
+            utils.print_debug(f"E_tot: {(E_comp + E_idle)}")
+            utils.print_debug(f"running_min: {running_min}")
+            utils.print_debug(f"running_argmin: {running_argmin}")
+
+        # Set condition
+        match opt_target:
+            # Minimize by runtime
+            case "T_tot":
+                is_new_min = (T_tot < running_min)
+            # Minimize by energy
+            case "E_compute":
+                is_new_min = (E_comp < running_min)
+            # Minimize by idle energy
+            case "E_idle":
+                is_new_min = (E_idle < running_min)
+            # Minimize by cumulative compute and idle energy
+            case "E_tot":
+                is_new_min = ((E_comp + E_idle) < running_min)
+            # If not supported
+            case _:
+                # Print and error out
+                utils.print_error("Unsupported optimization target " + opt_target)
+                exit(1)
+
+        # if new running min
+        if is_new_min:
+            # Update min and argmin
+            running_min = T_tot
+            running_argmin = argmin_index
+            # Print
+            utils.print_debug(f"[argmin] New {opt_target} minimum ({running_min}) at index {running_argmin}")
+
+        # Return values
+        return running_min, running_argmin

@@ -29,8 +29,9 @@ def thread_allocation_E (
                             runtime_df,     # t(a,m)
                             avg_power_df,   # p(a,m)
                             compute_Ttot: bool,
-                            compute_Etot: bool,
+                            compute_Ecompute: bool,
                             compute_E_idle: bool,
+                            opt_target: str,    # Optimization target
                         ):
 
     # Pre-allocate output arrays
@@ -39,7 +40,7 @@ def thread_allocation_E (
     # Preallocate all legal schedules (careful, this grows exponentially)
     MAX_SCHEDULES = LEN_D ** LEN_W
     T_tot  = [0. for _ in range(MAX_SCHEDULES)]
-    E_tot  = [0. for _ in range(MAX_SCHEDULES)]
+    E_comp  = [0. for _ in range(MAX_SCHEDULES)]
     E_idle = [0. for _ in range(MAX_SCHEDULES)]
 
     # Debug
@@ -97,16 +98,16 @@ def thread_allocation_E (
                 [print(*line) for line in legal_schedules[schedule_index]]
                 exit(1)
             # Print
-            utils.print_info(f"legal_schedules[{schedule_index}]:")
+            utils.print_debug(f"legal_schedules[{schedule_index}]:")
             [print(*line) for line in legal_schedules[schedule_index]]
 
     # For each possible schedule
-    min_tot = sys.maxsize
+    running_min = sys.maxsize
     best_index = 0
     for schedule_index in range(0,MAX_SCHEDULES):
         # Compute energy
         T_tot  [schedule_index] ,  \
-        E_tot  [schedule_index] ,  \
+        E_comp  [schedule_index] ,  \
         E_idle [schedule_index]  = \
             energy_sim.energy_sim.compute_energy_model(
                         hw_config_df,   # D array
@@ -115,22 +116,25 @@ def thread_allocation_E (
                         runtime_df,     # t(a,m)
                         avg_power_df,   # p(a,m)
                         compute_Ttot=compute_Ttot,
-                        compute_Etot=compute_Etot,
+                        compute_Ecompute=compute_Ecompute,
                         compute_E_idle=compute_E_idle,
                     )
 
-        # Compute argmin
-        # TODO: extend for T_tot and E_idle
-        if T_tot[schedule_index] < min_tot:
-            utils.print_debug(f"T_tot: {T_tot[schedule_index]}")
-            utils.print_debug(f"min_tot: {min_tot}")
-            utils.print_debug(f"Updating schedule to:")
-            if utils.DEBUG_ON:
-                [print(*line) for line in legal_schedules[schedule_index]]
-            # Update minimum
-            min_tot = T_tot[schedule_index]
-            # Save schedule
-            best_index = schedule_index
+        # Print
+        utils.print_debug(f"Evaluating schedule:")
+        if utils.DEBUG_ON:
+            [print(*line) for line in legal_schedules[schedule_index]]
+
+        # Update running min and argmin
+        running_min, best_index = energy_sim.thread_allocation.running_argmin_by(
+            opt_target=opt_target,
+            running_min=running_min,
+            running_argmin=best_index,
+            argmin_index=schedule_index,
+            T_tot=T_tot[schedule_index],
+            E_comp=E_comp[schedule_index],
+            E_idle=E_idle[schedule_index],
+        )
 
         # PMS...
         for i in range(0, len(S)):

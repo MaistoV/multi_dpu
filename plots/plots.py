@@ -28,12 +28,15 @@ os.makedirs(figures_dir, exist_ok=True)
 
 # Target figures
 data_settings_dict = [
+            # Scheduler_runtime(ns)
             {
                 "Data"     : "Scheduler_runtime(ns)",
                 "Label"    : "Scheduler runtime (ns)",
                 "Palette"  : "mako",
                 # Y-axis scale
                 "yscale" : "log",
+                # Y-axis limits
+                "ylimits" : [6*1e4, 111*1e11],
                 # Filter schedulers
                 "schedulers_sort" : [
                     "Random",
@@ -51,12 +54,15 @@ data_settings_dict = [
                     "Workload_Large",
                 ],
             },
+            # T_tot(s)
             {
-                "Data"   : "Ttot(s)",
+                "Data"   : "T_tot(s)",
                 "Label"    : "$T_{tot}$ (s)",
                 "Palette"  : "magma",
                 # Y-axis scale
                 "yscale" : "log",
+                # Y-axis limits
+                "ylimits" : [4*1e0, 3*1e2],
                 # Filter schedulers
                 "schedulers_sort" : [
                     "Random",
@@ -75,12 +81,15 @@ data_settings_dict = [
                     "Workload_High-energy skew",
                 ]
             },
+            # E_compute(mJ)
             {
-                "Data"   : "Etot(mJ)",
+                "Data"   : "E_compute(mJ)",
                 "Label"    : "$E_{tot}$ (mJ)",
                 "Palette"  : "magma",
                 # Y-axis scale
                 "yscale" : "log",
+                # Y-axis limits
+                "ylimits" : [4*1e3, 6*1e5],
                 # Filter schedulers
                 "schedulers_sort" : [
                     "Random",
@@ -99,12 +108,15 @@ data_settings_dict = [
                     "Workload_High-energy skew",
                 ]
             },
+            # E_idle(mJ)
             {
-                "Data"     : "Etot_idle(mJ)",
-                "Label"    : "$Eidle{tot}$ (mJ)",
+                "Data"     : "E_idle(mJ)",
+                "Label"    : "$E_{idle}$ (mJ)",
                 "Palette"  : "magma",
                 # Y-axis scale
                 "yscale" : "log",
+                # Y-axis limits
+                "ylimits" : [5*1e0, 12*1e7],
                 # Filter schedulers
                 "schedulers_sort" : [
                     "Random",
@@ -123,6 +135,34 @@ data_settings_dict = [
                     "Workload_High-energy skew",
                 ]
             },
+            # E_tot(mJ)
+            {
+                "Data"     : "E_tot(mJ)",
+                "Label"    : "$E_{tot}$ (mJ)",
+                "Palette"  : "magma",
+                # Y-axis scale
+                "yscale" : "log",
+                # Y-axis limits
+                "ylimits" : [5*1e1, 12*1e8],
+                # Filter schedulers
+                "schedulers_sort" : [
+                    "Random",
+                    "Round-Robin",
+                    "Batched-1",
+                    "Batched-2",
+                    "Batched-3", # These are exponentially slower
+                    "Batched-4", # These are exponentially slower
+                    "Greedy",
+                ],
+                # Workloads by type
+                "workload_sort" : [
+                    "Workload_Uniform",
+                    "Workload_Low-energy skew",
+                    "Workload_Mid-energy skew",
+                    "Workload_High-energy skew",
+                ]
+            },
+
         ]
 
 # Sort NPU array by level of heterogeneity
@@ -144,9 +184,10 @@ npu_array_sort = [
 
 # Optimization targets
 optimize_by_list = [
-        "Ttot",
-        "Etot",
-        "Eidle",
+        "T_tot",
+        "E_compute",
+        "E_idle",
+        "E_tot",
 ]
 
 # For optimization targets
@@ -180,8 +221,8 @@ for opt_target in optimize_by_list:
     # For each figure to plot
     for data_settings in data_settings_dict:
 
+        # Print
         print("[INFO] Plotting " + data_settings["Label"])
-
 
         ########################
         # Sort and filter data #
@@ -210,7 +251,7 @@ for opt_target in optimize_by_list:
         ##############
         # New figure #
         ##############
-        plt.figure(data_settings["Data"], figsize=[30,15])
+        plt.figure(figsize=[30,15])
 
         # Subplot setup
         num_rows = len(schedules_df_local["Workload"].unique())
@@ -239,14 +280,21 @@ for opt_target in optimize_by_list:
                 hue='Scheduler',
                 # legend=,
                 # errorbar=None,
+                # err_kws={'color': 'black'},
                 palette=data_settings["Palette"]
                 # color=["r", "g", "b"]
             )
 
             # Overlay a stripplot without the legend
-            sns.stripplot(x="NPUarray", y=data_settings["Data"], data=plot_data, hue="Scheduler",
+            sns.stripplot(
+                        x="NPUarray",
+                        y=data_settings["Data"],
+                        data=plot_data,
+                        hue="Scheduler",
                         dodge=True,
-                        legend=False)
+                        legend=False,
+                        alpha=0., # Full transparency
+                    )
 
             ############
             # Decorate #
@@ -262,11 +310,16 @@ for opt_target in optimize_by_list:
 
             plt.grid(axis="y", which="both")
             ax.set_yscale(data_settings["yscale"]) #, base=10)
+            # plt.ylim(data_settings["ylimits"])
+            # print(plt.ylim())
             # Title
             plt.title("W[" + workload[9:] + "]")
             # Labels
             if subplot_count == num_rows:
-                plt.xlabel("NPU Arrays")
+                plt.xlabel(
+                        "NPU Arrays",
+                        fontsize=FONT_SIZE * 1.5
+                    )
                 # xticks
                 dpu_array_tick = list(map(lambda s: re.sub(r"_", "\n", s), schedules_df_local["NPUarray"]))
                 plt.xticks(schedules_df_local["NPUarray"], dpu_array_tick)
@@ -281,7 +334,15 @@ for opt_target in optimize_by_list:
 
             # Y-axis
             if ((subplot_count-1) % num_cols) == 0:
-                plt.ylabel(data_settings["Label"])
+                # Rescale font size
+                if data_settings["Data"] == "Scheduler_runtime(ns)":
+                    fontsize = FONT_SIZE
+                else:
+                    fontsize = FONT_SIZE * 1.5
+                plt.ylabel(
+                        data_settings["Label"],
+                        fontsize=fontsize
+                    )
             else:
                 plt.ylabel("")
 
@@ -290,9 +351,6 @@ for opt_target in optimize_by_list:
         figname = re.sub(r'\([^)]*\)', '', figname)  # remove parentheses
         plt.savefig(figname, dpi=400, bbox_inches="tight")
         print("[INFO] Plot available at " + figname)
-
-        # Clean up
-        plt.clf()
 
         # Debug
         # exit()
