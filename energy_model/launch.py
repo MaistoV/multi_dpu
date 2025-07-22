@@ -16,6 +16,11 @@ from energy_sim import energy_model
 from energy_sim import utils
 from energy_sim import thread_allocation
 
+###############
+# Environment #
+###############
+INTERACTIVE = False
+
 ##############
 # Parse args #
 ##############
@@ -52,15 +57,15 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 #############################
 # Select response variable
 optimize_by_list = [
-        "T_tot",
-        # "E_compute",
-        # "E_idle",
-        # "E_tot",
+        # "T_tot",
+        "E_compute",
+        "E_idle",
+        "E_tot",
     ]
 NUM_OPT_TARGETS = len(optimize_by_list)
 
 # Number of repetitions
-NUM_REPS=int(1)
+NUM_REPS=int(10)
 
 factors_dir = "energy_model/experiment/"
 
@@ -226,8 +231,11 @@ for rep in range(1,NUM_REPS+1):
                 ):
             utils.print_error("Illegal schedule:")
             [print(*line) for line in S]
-        # DEBUG
-        # input() # for interactive run
+
+        # Interactive rus
+        if INTERACTIVE:
+            utils.print_info("Press any key to continue...")
+            input()
 
         # Call to simulation
         T_tot  ,  \
@@ -283,7 +291,7 @@ for rep in range(1,NUM_REPS+1):
 experiment_end = time.perf_counter_ns()
 from datetime import timedelta
 elapsed_seconds = (experiment_end - experiment_start) / 1e9
-utils.print_info(f"Total experiment runtime {timedelta(seconds=elapsed_seconds)} seconds")
+utils.print_info(f"Total experiment runtime {timedelta(seconds=elapsed_seconds)}")
 
 # Print
 for optimize_by in optimize_by_list:
