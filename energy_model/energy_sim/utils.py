@@ -13,7 +13,7 @@ import pandas
 b0 = 0.231800862 # Intercept
 b1 = 0.717562696 # Num threads
 MAX_THREADS = 128
-k = [0. for _ in range(MAX_THREADS)]
+k = [1. for _ in range(MAX_THREADS)]
 for i in range(0,MAX_THREADS):
     # Compute model (i+1 is the number of threads)
     linreg_runtime = b0 + (b1 * (i+1))
@@ -23,25 +23,19 @@ k[0] = 0. # Adjust to exactly 0. for no thread
 k[1] = 1. # Adjust to exactly 1. for one thread
 # print("k:", k)
 
-workload_dict = [
-        {
-            "Name"          : "Uniform",
-            "Energy classes": [1/3, 1/3, 1/3]
-        },
-        {
-            "Name"          : "Low-energy skew",
-            "Energy classes": [1/4, 1/4, 1/2]
-        },
-        {
-            "Name"          : "Mid-energy skew",
-            "Energy classes": [1/4, 1/2, 1/4]
-        },
-        {
-            "Name"          : "High-energy skew",
-            "Energy classes": [1/2, 1/4, 1/4]
-        },
-    ]
-workload_df = pandas.DataFrame(workload_dict)
+def is_schedule_legal (
+                        len_d,
+                        len_w,
+                        schedule,
+                    ) -> bool:
+
+        # For each row/thread
+        for t in range(0,len_w):
+            # Check allocation is legal
+            if ( sum(schedule[t]) != 1 ):
+                return False
+        # All good
+        return True
 
 ####################
 # ZCU102 resources #
@@ -186,7 +180,7 @@ def print_log( message ):
         print("[LOG]:", message)
 
 DEBUG_ON = False
-# DEBUG_ON = True
+DEBUG_ON = True
 def print_debug( message ):
     if DEBUG_ON :
         print("[DEBUG]:", message)

@@ -6,21 +6,8 @@ import sys
 import energy_sim
 import itertools
 from energy_sim import utils
-
-def is_schedule_legal (
-                        len_d,
-                        len_w,
-                        schedule,
-                    ) -> bool:
-
-        # For each row/thread
-        for t in range(0,len_w):
-            # Check allocation is legal
-            if ( sum(schedule[t]) != 1 ):
-                return False
-        # All good
-        return True
-
+from energy_sim import energy_model
+from energy_sim import thread_allocation
 
 def thread_allocation_E (
                             hw_config_df,
@@ -44,9 +31,9 @@ def thread_allocation_E (
     E_idle = [0. for _ in range(MAX_SCHEDULES)]
 
     # Debug
-    utils.print_debug(f"LEN_D: {LEN_D}:")
-    utils.print_debug(f"LEN_W: {LEN_W}:")
-    utils.print_debug(f"MAX_SCHEDULES: {MAX_SCHEDULES}:")
+    utils.print_log(f"LEN_D: {LEN_D}:")
+    utils.print_log(f"LEN_W: {LEN_W}:")
+    utils.print_log(f"MAX_SCHEDULES: {MAX_SCHEDULES}:")
 
     ################################
     # Generate all legal schedules #
@@ -85,11 +72,11 @@ def thread_allocation_E (
     # Debug
     if utils.DEBUG_ON:
         # for schedule_index in range(0,MAX_SCHEDULES):
-        #     utils.print_debug(f"{schedule_index}:")
+        #     utils.print_log(f"{schedule_index}:")
         #     [print(*line) for line in legal_schedules[schedule_index]]
         for schedule_index in range(0,MAX_SCHEDULES):
             # Check schedule legality
-            if not is_schedule_legal (
+            if not utils.is_schedule_legal (
                         len_d=LEN_D,
                         len_w=LEN_W,
                         schedule=legal_schedules[schedule_index]
@@ -98,8 +85,9 @@ def thread_allocation_E (
                 [print(*line) for line in legal_schedules[schedule_index]]
                 exit(1)
             # Print
-            utils.print_debug(f"legal_schedules[{schedule_index}]:")
-            [print(*line) for line in legal_schedules[schedule_index]]
+            utils.print_log(f"legal_schedules[{schedule_index}]:")
+            if utils.LOG_ON:
+                [print(*line) for line in legal_schedules[schedule_index]]
 
     # For each possible schedule
     running_min = sys.maxsize
@@ -109,7 +97,7 @@ def thread_allocation_E (
         T_tot  [schedule_index] ,  \
         E_comp  [schedule_index] ,  \
         E_idle [schedule_index]  = \
-            energy_sim.energy_sim.compute_energy_model(
+            energy_model.compute_energy_model(
                         hw_config_df,   # D array
                         workload_df,    # W array (up to this thread)
                         legal_schedules[schedule_index], # Allocation matrix (running copy)
@@ -121,12 +109,12 @@ def thread_allocation_E (
                     )
 
         # Print
-        utils.print_debug(f"Evaluating schedule:")
-        if utils.DEBUG_ON:
+        utils.print_log(f"Evaluating schedule:")
+        if utils.LOG_ON:
             [print(*line) for line in legal_schedules[schedule_index]]
 
         # Update running min and argmin
-        running_min, best_index = energy_sim.thread_allocation.running_argmin_by(
+        running_min, best_index = thread_allocation.running_argmin_by(
             opt_target=opt_target,
             running_min=running_min,
             running_argmin=best_index,

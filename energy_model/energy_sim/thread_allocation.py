@@ -3,12 +3,13 @@
 
 # Import
 import sys
-from energy_sim import utils
+from energy_sim.energy_model import utils
 from schedulers import round_robin
 from schedulers import greedy
 from schedulers import exhaustive
 from schedulers import batched_exhaustive
 from schedulers import random
+from schedulers import arch_affine
 
 # Wrapper function
 def thread_allocation (
@@ -89,6 +90,14 @@ def thread_allocation (
                 workload_df=workload_df,
                 S=S,
             )
+        case "Arch-Affine":
+            arch_affine.thread_allocation_AA(
+                hw_config_df=hw_config_df,
+                workload_df=workload_df,
+                S=S,
+                runtime_df=runtime_df,
+                avg_power_df=avg_power_df,
+            )
         case "Greedy":
             greedy.thread_allocation_G(
                 hw_config_df=hw_config_df,
@@ -144,28 +153,34 @@ def running_argmin_by (
         # Minimization condition default
         is_new_min = False
 
-        if utils.DEBUG_ON:
-            utils.print_debug(f"T_tot: {T_tot}")
-            utils.print_debug(f"E_compute: {E_comp}")
-            utils.print_debug(f"E_idle: {E_idle}")
-            utils.print_debug(f"E_tot: {(E_comp + E_idle)}")
-            utils.print_debug(f"running_min: {running_min}")
-            utils.print_debug(f"running_argmin: {running_argmin}")
+        # Print
+        utils.print_log(f"T_tot: {T_tot}" +
+                        f"E_compute: {E_comp}" +
+                        f"E_idle: {E_idle}" +
+                        f"E_tot: {(E_comp + E_idle)}" +
+                        f"running_min: {running_min}" +
+                        f"running_argmin: {running_argmin}"
+                    )
 
         # Set condition
         match opt_target:
             # Minimize by runtime
             case "T_tot":
                 is_new_min = (T_tot < running_min)
+                new_value = T_tot
             # Minimize by energy
             case "E_compute":
                 is_new_min = (E_comp < running_min)
+                new_value = E_comp
             # Minimize by idle energy
             case "E_idle":
                 is_new_min = (E_idle < running_min)
+                new_value = E_idle
             # Minimize by cumulative compute and idle energy
             case "E_tot":
-                is_new_min = ((E_comp + E_idle) < running_min)
+                E_tot = (E_comp + E_idle)
+                is_new_min = (E_tot < running_min)
+                new_value = E_tot
             # If not supported
             case _:
                 # Print and error out
@@ -175,10 +190,10 @@ def running_argmin_by (
         # if new running min
         if is_new_min:
             # Update min and argmin
-            running_min = T_tot
+            running_min = new_value
             running_argmin = argmin_index
             # Print
-            utils.print_debug(f"[argmin] New {opt_target} minimum ({running_min}) at index {running_argmin}")
+            utils.print_log(f"[argmin] New {opt_target} minimum ({running_min}) at index {running_argmin}")
 
         # Return values
         return running_min, running_argmin

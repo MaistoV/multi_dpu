@@ -1,6 +1,7 @@
 Name,Batch_Size
 Random,0
 Round-Robin,0
+Arch-Affine,0
 Greedy,0
 Batched,1
 Batched,2

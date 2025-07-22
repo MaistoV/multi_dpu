@@ -41,6 +41,7 @@ data_settings_dict = [
                 "schedulers_sort" : [
                     "Random",
                     "Round-Robin",
+                    "Arch-Affine",
                     "Batched-1",
                     "Batched-2",
                     "Batched-3", # These are exponentially slower
@@ -67,6 +68,7 @@ data_settings_dict = [
                 "schedulers_sort" : [
                     "Random",
                     "Round-Robin",
+                    "Arch-Affine",
                     "Batched-1",
                     "Batched-2",
                     "Batched-3", # These are exponentially slower
@@ -75,10 +77,10 @@ data_settings_dict = [
                 ],
                 # Workloads by type
                 "workload_sort" : [
+                    "Workload_Skew Low-energy",
+                    "Workload_Skew Mid-energy",
+                    "Workload_Skew High-energy",
                     "Workload_Uniform",
-                    "Workload_Low-energy skew",
-                    "Workload_Mid-energy skew",
-                    "Workload_High-energy skew",
                 ]
             },
             # E_compute(mJ)
@@ -94,6 +96,7 @@ data_settings_dict = [
                 "schedulers_sort" : [
                     "Random",
                     "Round-Robin",
+                    "Arch-Affine",
                     "Batched-1",
                     "Batched-2",
                     "Batched-3", # These are exponentially slower
@@ -102,10 +105,10 @@ data_settings_dict = [
                 ],
                 # Workloads by type
                 "workload_sort" : [
+                    "Workload_Skew Low-energy",
+                    "Workload_Skew Mid-energy",
+                    "Workload_Skew High-energy",
                     "Workload_Uniform",
-                    "Workload_Low-energy skew",
-                    "Workload_Mid-energy skew",
-                    "Workload_High-energy skew",
                 ]
             },
             # E_idle(mJ)
@@ -121,6 +124,7 @@ data_settings_dict = [
                 "schedulers_sort" : [
                     "Random",
                     "Round-Robin",
+                    "Arch-Affine",
                     "Batched-1",
                     "Batched-2",
                     "Batched-3", # These are exponentially slower
@@ -129,10 +133,10 @@ data_settings_dict = [
                 ],
                 # Workloads by type
                 "workload_sort" : [
+                    "Workload_Skew Low-energy",
+                    "Workload_Skew Mid-energy",
+                    "Workload_Skew High-energy",
                     "Workload_Uniform",
-                    "Workload_Low-energy skew",
-                    "Workload_Mid-energy skew",
-                    "Workload_High-energy skew",
                 ]
             },
             # E_tot(mJ)
@@ -148,6 +152,7 @@ data_settings_dict = [
                 "schedulers_sort" : [
                     "Random",
                     "Round-Robin",
+                    "Arch-Affine",
                     "Batched-1",
                     "Batched-2",
                     "Batched-3", # These are exponentially slower
@@ -156,10 +161,10 @@ data_settings_dict = [
                 ],
                 # Workloads by type
                 "workload_sort" : [
+                    "Workload_Skew Low-energy",
+                    "Workload_Skew Mid-energy",
+                    "Workload_Skew High-energy",
                     "Workload_Uniform",
-                    "Workload_Low-energy skew",
-                    "Workload_Mid-energy skew",
-                    "Workload_High-energy skew",
                 ]
             },
 
@@ -196,13 +201,14 @@ opt_target_index = 0
 for opt_target in optimize_by_list:
 
     # Print
-    print("[INFO] Plotting for " + opt_target)
+    print("[PLOT] Plotting for " + opt_target)
 
     #############
     # Read data #
     #############
 
     filepath = "energy_model/experiment/Response/multi_npu_data.by" + opt_target +  ".csv"
+    print("[PLOT] Reading " + filepath)
     schedules_df[opt_target_index] = pandas.read_csv(filepath, sep=";")
 
     # Sort by NPU array
@@ -222,7 +228,7 @@ for opt_target in optimize_by_list:
     for data_settings in data_settings_dict:
 
         # Print
-        print("[INFO] Plotting " + data_settings["Label"])
+        print("[PLOT] Plotting " + data_settings["Label"])
 
         ########################
         # Sort and filter data #
@@ -350,7 +356,7 @@ for opt_target in optimize_by_list:
         figname = figures_dir + data_settings["Data"] + ".by" + opt_target + ".png"
         figname = re.sub(r'\([^)]*\)', '', figname)  # remove parentheses
         plt.savefig(figname, dpi=400, bbox_inches="tight")
-        print("[INFO] Plot available at " + figname)
+        print("[PLOT] Plot available at " + figname)
 
         # Debug
         # exit()

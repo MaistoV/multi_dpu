@@ -53,7 +53,7 @@ from energy_sim import utils
 #   E_comp    : batch multi-DPU energy consumption
 #               E_comp = sum[D[:]](E[:])
 #   E_tot_idle : batch multi-DPU idle energy consumption
-#               E_comp = sum[D[:]](t[A[d],"Idle"] * p[A[d],"Idle"])
+#               E_tot_idle = sum[D[:]](t[A[d],"Idle"] * p[A[d],"Idle"])
 
 def compute_energy_model(
             hw_config_df,   # D array
@@ -128,6 +128,7 @@ def compute_energy_model(
         # Compute: T[d] = sum[W[d]](t[A[d],:]) * k[N[d]]
         for thread_index in range(LEN_W):
             # Compute: sum[W[d]](t[A[d],:])
+            allocated_threads = 1
             for d in D:
                 utils.print_log(f"A[d] {A[d]}")
                 # If allocated
@@ -137,10 +138,12 @@ def compute_energy_model(
                             (t["ARCH"] == A[d])
                             &
                             (t["Model"] == M[thread_index])
-                        ]["Runtime (s)"].values[0]
-        # Adjust for multi-threading (k[N[d]])
-        for d in D:
-            T[d] *= utils.k[N[d]]
+                        ]["Runtime (s)"].values[0] * utils.k[allocated_threads]
+                    # Increment counter
+                    allocated_threads += 1
+        # # Adjust for multi-threading (k[N[d]])
+        # for d in D:
+        #     T[d] *= utils.k[N[d]]
         utils.print_log("T:" + str(T))
 
         # Compute total T_tot = max[d](T[d])
@@ -167,6 +170,7 @@ def compute_energy_model(
         utils.print_log(f"[compute_energy_model] Compute DPU energy draws E_compute")
         E = [0. for _ in range(LEN_D)]
         # Compute: E[d] = sum[W[d]](p[A[d],] * t[A[d],:]) * k[N[d]]
+        allocated_threads = 1
         for thread_index in range(LEN_W):
             for d in D:
                 # Compute: sum[W[d]](t[A[d],:])
@@ -192,12 +196,15 @@ def compute_energy_model(
                             (p["Model"] == M[thread_index])
                         ]["Power PL (mW)"].values[0]
                     # Calculate compute energy
-                    E[d] = (power_pl + power_ps) * runtime
+                    # Adjust for multi-threading (k[N[d]])
+                    E[d] = (power_pl + power_ps) * runtime * utils.k[allocated_threads]
+                    # Increment counter
+                    allocated_threads += 1
         # Adjust for multi-threading (k[N[d]])
-        for d in D:
-            E[d] *= utils.k[N[d]]
-        # Print
-        utils.print_log("E:" + str(E))
+        # for d in D:
+        #     E[d] *= utils.k[N[d]]
+        # # Print
+        # utils.print_log("E:" + str(E))
 
         # Compute total E_comp = sum[D[:]](E[:])
         E_comp = sum(E)
@@ -240,10 +247,10 @@ def compute_energy_model(
         E_idle_tot = sum(E_idle)
         utils.print_log("E_idle_tot:" + str(E_idle_tot))
 
-        if compute_E_idle:
-            # Percentage
-            energy_waste =  E_idle_tot / (E_comp + E_idle_tot)
-            utils.print_log("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
+        # if compute_E_idle:
+        #     # Percentage
+        #     energy_waste =  E_idle_tot / (E_comp + E_idle_tot)
+        #     utils.print_log("Wasted energy: " + "{:2.2}".format(energy_waste) + "%")
 
     # Save to file
     # TBD

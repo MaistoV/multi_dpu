@@ -6,14 +6,13 @@
 from math import ceil
 import os # for basename
 import time # measure runtimes
-import numpy
-import pandas # for tables
+import numpy # for random.shuffle
+import pandas # for dataframes
 import glob # for paths
 import pathlib # check if file exists
 import sys # for argv
-import random # for shuffle
 # Import custom
-from energy_sim import energy_sim
+from energy_sim import energy_model
 from energy_sim import utils
 from energy_sim import thread_allocation
 
@@ -54,9 +53,9 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 # Select response variable
 optimize_by_list = [
         "T_tot",
-        "E_compute",
-        "E_idle",
-        "E_tot",
+        # "E_compute",
+        # "E_idle",
+        # "E_tot",
     ]
 NUM_OPT_TARGETS = len(optimize_by_list)
 
@@ -68,6 +67,7 @@ factors_dir = "energy_model/experiment/"
 # Hardware hw_configs
 wildcard_path = factors_dir + "/NPUs/*.csv"
 # wildcard_path = factors_dir + "/NPUs/1x512_1x1024_1x2304_1x4096.csv" # DEBUG
+# wildcard_path = factors_dir + "/NPUs/3x1024_2x4096.csv" # DEBUG
 # wildcard_path = factors_dir + "/NPUs/4x512.csv" # DEBUG
 # wildcard_path = factors_dir + "/NPUs/3x4096.csv" # DEBUG
 paths = glob.glob(wildcard_path)
@@ -175,7 +175,7 @@ exp_plan_slice = exp_plan [ process_index*batch_len : (process_index+1)*batch_le
 
 # For repetitions
 this_run = 0
-tot_runs_slice = int(tot_runs / num_processes)
+tot_runs_slice = ceil(tot_runs / num_processes)
 my_pid = os.getpid()
 for rep in range(1,NUM_REPS+1):
     # For each experiment in slice
@@ -189,8 +189,12 @@ for rep in range(1,NUM_REPS+1):
         workload_df    = exp_plan_slice[exp_index]["workload_df"]
         workload_name  = exp_plan_slice[exp_index]["workload_name"]
 
+        # Print
         this_run += 1
-        utils.print_info(f"[{my_pid}] [{this_run}/{tot_runs_slice}]: target {optimize_by}, rep {rep}, {scheduler_row.Name} {batch_size}, {hw_config_name}, {workload_name}")
+        if batch_size != 0:
+            utils.print_info(f"[{my_pid}] [{this_run}/{tot_runs_slice}]: target {optimize_by}, rep {rep}, {scheduler_row.Name}-{batch_size}, {hw_config_name}, {workload_name}")
+        else:
+            utils.print_info(f"[{my_pid}] [{this_run}/{tot_runs_slice}]: target {optimize_by}, rep {rep}, {scheduler_row.Name}, {hw_config_name}, {workload_name}")
 
         # continue # DEBUG: for a dry run
 
@@ -214,11 +218,22 @@ for rep in range(1,NUM_REPS+1):
         # Latency measure: end
         ######################################
 
+        #  Check schedule validity
+        if not utils.is_schedule_legal (
+                    len_d=len(hw_config_df),
+                    len_w=len(workload_df),
+                    schedule=S
+                ):
+            utils.print_error("Illegal schedule:")
+            [print(*line) for line in S]
+        # DEBUG
+        # input() # for interactive run
+
         # Call to simulation
         T_tot  ,  \
         E_comp ,  \
         E_idle  = \
-            energy_sim.compute_energy_model(
+            energy_model.compute_energy_model(
                         hw_config_df,
                         workload_df,
                         S,

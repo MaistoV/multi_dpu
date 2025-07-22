@@ -31,10 +31,10 @@ def thread_allocation_BE (
     NUM_B = math.ceil(LEN_W / batch_size)
 
     # Debug
-    utils.print_debug(f"LEN_D: {LEN_D}:")
-    utils.print_debug(f"LEN_W: {LEN_W}:")
-    utils.print_debug(f"batch_size: {batch_size}:")
-    utils.print_debug(f"NUM_B: {NUM_B}:")
+    utils.print_log(f"LEN_D: {LEN_D}:")
+    utils.print_log(f"LEN_W: {LEN_W}:")
+    utils.print_log(f"batch_size: {batch_size}:")
+    utils.print_log(f"NUM_B: {NUM_B}:")
 
     # For each batch
     for batch_index in range(0,NUM_B):
@@ -44,9 +44,9 @@ def thread_allocation_BE (
         batch_workload_df = workload_df [ index_low : index_high ]
 
         # Print
-        utils.print_debug(f"index_low: {index_low}")
-        utils.print_debug(f"index_high: {index_high}")
-        utils.print_debug(f"batch_workload_df:\n{batch_workload_df}")
+        utils.print_log(f"index_low: {index_low}")
+        utils.print_log(f"index_high: {index_high}")
+        utils.print_log(f"batch_workload_df:\n{batch_workload_df}")
 
         # Call exhaustive version with a batch of the workload and the corresponding section of the allocation matrix S
         exhaustive.thread_allocation_E(
@@ -62,6 +62,6 @@ def thread_allocation_BE (
             )
 
         # Print
-        utils.print_debug(f"S: ")
-        if utils.DEBUG_ON:
+        utils.print_log(f"S: ")
+        if utils.LOG_ON:
             [print(*line) for line in S]

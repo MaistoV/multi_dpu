@@ -6,7 +6,7 @@ def thread_allocation_RR (
                             workload_df,
                             S
                         ):
-    # s_{d,t} = 1, \ \textrm{if} \ d = t \ mod \ |D|
+    # s_{t,d} = 1, \ \textrm{if} \ d = t \ mod \ |D|
     LEN_D = len(hw_config_df)
     for thread_index, row in workload_df.iterrows():
         for d_index, row in hw_config_df.iterrows():

@@ -4,6 +4,8 @@
 import sys
 import energy_sim
 from energy_sim import utils
+from energy_sim import energy_model
+from energy_sim import thread_allocation
 
 def thread_allocation_G (
                             hw_config_df,
@@ -26,7 +28,7 @@ def thread_allocation_G (
     LEN_D = len(hw_config_df)
     # LEN_W = len(workload_df)
     T_tot  = [0. for _ in range(LEN_D)]
-    E_comp  = [0. for _ in range(LEN_D)]
+    E_comp = [0. for _ in range(LEN_D)]
     E_idle = [0. for _ in range(LEN_D)]
 
     # One thread at the time
@@ -51,9 +53,9 @@ def thread_allocation_G (
 
             # Compute runtime (T_tot) and energy (E_comp) with running schedule
             T_tot  [d_index] ,  \
-            E_comp  [d_index] ,  \
+            E_comp [d_index] ,  \
             E_idle [d_index]  = \
-                energy_sim.energy_sim.compute_energy_model(
+                energy_model.compute_energy_model(
                             hw_config_df,   # D array
                             workload_df[0 : thread_index+1],    # W array (up to this thread)
                             S_,             # Allocation matrix (running copy)
@@ -65,11 +67,11 @@ def thread_allocation_G (
                         )
 
             # Update running min and argmin
-            running_min, argmin_d = energy_sim.thread_allocation.running_argmin_by(
+            running_min, argmin_d = thread_allocation.running_argmin_by(
                 opt_target=opt_target,
                 running_min=running_min,
-                argmin_index=argmin_d,
-                running_argmin=d_index,
+                argmin_index=d_index,
+                running_argmin=argmin_d,
                 T_tot=T_tot[d_index],
                 E_comp=E_comp[d_index],
                 E_idle=E_idle[d_index],
@@ -88,7 +90,7 @@ def thread_allocation_G (
 
         # Debug
         utils.print_log(f"[greedy] argmin_d: {argmin_d}")
-        utils.print_log("[greedy] S:")
+        utils.print_log("[greedy] S[0 : thread_index+1]:")
         if utils.LOG_ON:
-            [print(*line) for line in S]
+            [print(*line) for line in S[0 : thread_index+1]]
 
