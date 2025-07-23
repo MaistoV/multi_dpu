@@ -57,15 +57,15 @@ energy_df = pandas.read_csv(filename, sep=";", index_col=None)
 #############################
 # Select response variable
 optimize_by_list = [
-        # "T_tot",
-        "E_compute",
-        "E_idle",
-        "E_tot",
+        "T_tot",
+        # "E_compute",
+        # "E_idle",
+        # "E_tot",
     ]
 NUM_OPT_TARGETS = len(optimize_by_list)
 
 # Number of repetitions
-NUM_REPS=int(10)
+NUM_REPS=int(5)
 
 factors_dir = "energy_model/experiment/"
 
@@ -117,9 +117,10 @@ NUM_SCHEDULERS = len(schedulers_df) # number of rows
 for hw_config_index in range(0,NUM_NPU_ARRAYS):
     hw_config = hw_config_df_list[hw_config_index]
     # Check if feasible
-    if not utils.is_multinpu_placeable(hw_config):
-        print("[ERROR] Design not placeable!:\n", hw_config_names[hw_config_index])
-        exit(1)
+    if utils.DEBUG_ON:
+        if not utils.is_multinpu_placeable(hw_config):
+            print("[ERROR] Design not placeable!:\n", hw_config_names[hw_config_index])
+            exit(1)
 
 ##################
 # Pre-allocation #
@@ -132,7 +133,6 @@ outdir = "energy_model/experiment/Response/"
 # E_comp  = [[[0. for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS) ]
 # E_idle = [[[0. for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS)]
 # sched_runtime = [[[0. for _ in range(NUM_NPU_ARRAYS)] for _ in range(NUM_WORKLOADS) ] for _ in range(NUM_SCHEDULERS)]
-# filepaths = ["" for _ in range(len(optimize_by_list))]
 
 # Maximum number of NPUs in the design
 # Use this to pre-allocate Td and Ed arrays
@@ -181,7 +181,7 @@ exp_plan_slice = exp_plan [ process_index*batch_len : (process_index+1)*batch_le
 # For repetitions
 this_run = 0
 tot_runs_slice = ceil(tot_runs / num_processes)
-my_pid = os.getpid()
+filepaths = ["" for _ in range(len(exp_plan_slice))]
 for rep in range(1,NUM_REPS+1):
     # For each experiment in slice
     for exp_index in range(len(exp_plan_slice)):
@@ -197,9 +197,9 @@ for rep in range(1,NUM_REPS+1):
         # Print
         this_run += 1
         if batch_size != 0:
-            utils.print_info(f"[{my_pid}] [{this_run}/{tot_runs_slice}]: target {optimize_by}, rep {rep}, {scheduler_row.Name}-{batch_size}, {hw_config_name}, {workload_name}")
+            utils.print_info(f"[{process_index}] [{this_run}/{tot_runs_slice}]: target {optimize_by}, rep {rep}, {scheduler_row.Name}-{batch_size}, {hw_config_name}, {workload_name}")
         else:
-            utils.print_info(f"[{my_pid}] [{this_run}/{tot_runs_slice}]: target {optimize_by}, rep {rep}, {scheduler_row.Name}, {hw_config_name}, {workload_name}")
+            utils.print_info(f"[{process_index}] [{this_run}/{tot_runs_slice}]: target {optimize_by}, rep {rep}, {scheduler_row.Name}, {hw_config_name}, {workload_name}")
 
         # continue # DEBUG: for a dry run
 
@@ -257,17 +257,17 @@ for rep in range(1,NUM_REPS+1):
         ################
 
         # Target file
-        filepath = outdir + "multi_npu_data.by" + optimize_by +  ".csv"
+        filepaths[exp_index] = outdir + "multi_npu_data.by" + optimize_by + "_" + str(process_index) + ".csv"
 
         # Check if file exists
-        if not pathlib.Path(filepath).is_file():
+        if not pathlib.Path(filepaths[exp_index]).is_file():
             # Overwrite header to file
-            with open(filepath, "w") as fd:
+            with open(filepaths[exp_index], "w") as fd:
                 # Write header
                 fd.write("Scheduler;Workload;NPUarray;Scheduler_runtime(ns);T_tot(s);E_compute(mJ);E_idle(mJ);E_tot(mJ)\n")
 
         # Append on file
-        with open(filepath, "a") as fd:
+        with open(filepaths[exp_index], "a") as fd:
             # Prepare line with factor combinations
             scheduler_name = scheduler_row["Name"]
             if scheduler_row["Name"] == "Batched":
@@ -295,5 +295,5 @@ utils.print_info(f"Total experiment runtime {timedelta(seconds=elapsed_seconds)}
 
 # Print
 for optimize_by in optimize_by_list:
-    utils.print_info(f"Data available at {outdir}multi_npu_data.by{optimize_by}.csv")
+    utils.print_info(f"Data available at {filepaths}")
 

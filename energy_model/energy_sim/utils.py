@@ -180,7 +180,7 @@ def print_log( message ):
         print("[LOG]:", message)
 
 DEBUG_ON = False
-DEBUG_ON = True
+# DEBUG_ON = True
 def print_debug( message ):
     if DEBUG_ON :
         print("[DEBUG]:", message)

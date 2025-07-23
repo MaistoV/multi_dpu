@@ -12,4 +12,4 @@ done
 wait
 
 # Plot data
-# plots/plots.py
+plots/plots.py
