@@ -34,26 +34,24 @@ def thread_allocation (
     compute_Ttot=False
     compute_Ecompute=False
     compute_E_idle=False
-    match opt_target:
-        case "T_tot":
+    if opt_target == "T_tot":
             compute_Ttot=True
-        case "E_compute":
+    elif opt_target == "E_compute":
             compute_Ecompute=True
-        case "E_idle":
+    elif opt_target ==  "E_idle":
             compute_Ttot=True
             compute_E_idle=True
-        case "E_tot":
+    elif opt_target ==  "E_tot":
             # Also requires T_tot for T_idle
             compute_Ttot=True
             compute_Ecompute=True
             compute_E_idle=True
-        case _:
+    else:
             utils.print_error("Unsupported optimization target " + opt_target)
             exit(1)
 
     # Launch selected scheduler
-    match scheduler_row["Name"]:
-        case "Exhaustive":
+    if scheduler_row["Name"] == "Exhaustive":
             exhaustive.thread_allocation_E(
                 hw_config_df=hw_config_df,
                 workload_df=workload_df,
@@ -65,7 +63,7 @@ def thread_allocation (
                 compute_E_idle=compute_E_idle,
                 opt_target=opt_target,
             )
-        case "Batched":
+    elif scheduler_row["Name"] ==  "Batched":
             batched_exhaustive.thread_allocation_BE(
                 hw_config_df=hw_config_df,
                 workload_df=workload_df,
@@ -78,19 +76,19 @@ def thread_allocation (
                 compute_E_idle=compute_E_idle,
                 opt_target=opt_target,
             )
-        case "Round-Robin":
+    elif scheduler_row["Name"] ==  "Round-Robin":
             round_robin.thread_allocation_RR(
                 hw_config_df=hw_config_df,
                 workload_df=workload_df,
                 S=S,
             )
-        case "Random":
+    elif scheduler_row["Name"] ==  "Random":
             random.thread_allocation_R(
                 hw_config_df=hw_config_df,
                 workload_df=workload_df,
                 S=S,
             )
-        case "Arch-Affine":
+    elif scheduler_row["Name"] == "Arch-Affine":
             arch_affine.thread_allocation_AA(
                 hw_config_df=hw_config_df,
                 workload_df=workload_df,
@@ -98,7 +96,7 @@ def thread_allocation (
                 runtime_df=runtime_df,
                 avg_power_df=avg_power_df,
             )
-        case "Greedy":
+    elif scheduler_row["Name"] == "Greedy":
             greedy.thread_allocation_G(
                 hw_config_df=hw_config_df,
                 workload_df=workload_df,
@@ -110,7 +108,7 @@ def thread_allocation (
                 compute_E_idle=compute_E_idle,
                 opt_target=opt_target,
             )
-        case _:
+    else:
             utils.print_error("Unsupported scheduler " + scheduler_row["Name"])
             exit(1)
 
@@ -163,26 +161,25 @@ def running_argmin_by (
                     )
 
         # Set condition
-        match opt_target:
-            # Minimize by runtime
-            case "T_tot":
+        # Minimize by runtime
+        if opt_target == "T_tot":
                 is_new_min = (T_tot < running_min)
                 new_value = T_tot
             # Minimize by energy
-            case "E_compute":
+        elif opt_target == "E_compute":
                 is_new_min = (E_comp < running_min)
                 new_value = E_comp
             # Minimize by idle energy
-            case "E_idle":
+        elif opt_target == "E_idle":
                 is_new_min = (E_idle < running_min)
                 new_value = E_idle
             # Minimize by cumulative compute and idle energy
-            case "E_tot":
+        elif opt_target == "E_tot":
                 E_tot = (E_comp + E_idle)
                 is_new_min = (E_tot < running_min)
                 new_value = E_tot
             # If not supported
-            case _:
+        else:
                 # Print and error out
                 utils.print_error("Unsupported optimization target " + opt_target)
                 exit(1)
